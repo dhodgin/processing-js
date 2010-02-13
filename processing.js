@@ -3614,6 +3614,7 @@
     };
 
     // Loads an image for display. Type is unused. Callback is fired on load.
+    // dhodgin working on this for 0.6 with PImage
     p.loadImage = function loadImage(file, type, callback) {
       var img = document.createElement('img');
       img.src = file;
