@@ -3615,12 +3615,13 @@
 
     // Loads an image for display. Type is unused. Callback is fired on load.
     // dhodgin working on this for 0.6 with PImage
+    // img.onload=setTimeout(function(ctx, img) {... context.drawImage(img, 0, 0); ...}, 0, this, img);
     p.loadImage = function loadImage(file, type, callback) {
       var img = document.createElement('img');
       img.src = file;
       img.loaded = false;
       img.mask = function () {}; // I don't think image mask was ever implemented? -F1LT3R
-      img.onload = function () {
+      img.onload = function() {
         var h = this.height,
           w = this.width;
 
@@ -3642,7 +3643,7 @@
           callback();
         }
       };
-
+      //alert("broken");
       return img;
     };
 
