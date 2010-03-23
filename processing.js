@@ -4965,6 +4965,9 @@
       },
       updatePixels: function() {
       },
+      resize: function (w,h) {
+        
+      },
       toImageData: function() {
         var canvas = document.createElement('canvas');
         var imgData = canvas.getContext('2d').createImageData(this.width, this.height); 
