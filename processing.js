@@ -5529,7 +5529,9 @@
 
     // Load a file or URL into strings
     p.loadStrings = function loadStrings(filename) {
-      return (localStorage[filename] ? localStorage[filename] : ajax(filename).slice(0, -1)).split("\n");
+      if (localStorage[filename]) return localStorage[filename];
+      var filecontent = ajax(filename).replace(/(\n)+$/,'');
+      return filecontent.split("\n");
     };
 
     // Writes an array of strings to a file, one line per string
