@@ -5531,12 +5531,11 @@
     p.loadStrings = function loadStrings(filename) {
       var filecontent;
       if (localStorage[filename]) {
-        // cached data is collapsed on \n, so we still need to split it
         filecontent = localStorage[filename]; }
       else {
-        // deal with the fact that Windows uses \r\n, Unix uses \n, and Mac uses \r
-        filecontent = ajax(filename).replace(/(\r\n)/g,'\n');
-        filecontent = filecontent.replace(/\r/g,'\n'); }
+        // deal with the fact that Windows uses \r\n, Unix uses \n,
+        // Mac uses \r, and we actually expect \n
+        filecontent = ajax(filename).replace(/(\r\n?)/g,"\n"); }
       return filecontent.split("\n");
     };
 
