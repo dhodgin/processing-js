@@ -5535,7 +5535,7 @@
       else {
         // deal with the fact that Windows uses \r\n, Unix uses \n,
         // Mac uses \r, and we actually expect \n
-        filecontent = ajax(filename).replace(/(\r\n?)/g,"\n"); }
+        filecontent = ajax(filename).replace(/(\r\n?)/g,"\n").replace(/\n$/,""); }
       return filecontent.split("\n");
     };
 
