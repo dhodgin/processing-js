@@ -23,7 +23,7 @@
   var ajax = function ajax(url) {
     var xhr = new XMLHttpRequest();
     xhr.open("GET", url, false);
-    xhr.setRequestHeader("If-Modified-Since", "Fri, 1 Jan 1960 00:00:00 GMT");
+    xhr.setRequestHeader("If-Modified-Since", "Fri, 01 Jan 1960 00:00:00 GMT");
     xhr.send(null);
     // failed request?
     if (xhr.status !== 200 && xhr.status !== 0) { throw ("XMLHttpRequest failed, status code " + xhr.status); }
@@ -306,10 +306,30 @@
     SHIFT:     16,
     CONTROL:   17,
     ALT:       18,
+    CAPSLK:    20,
+    PGUP:      33,
+    PGDN:      34,
+    END:       35,
+    HOME:      36,
+    LEFT:      37,
     UP:        38,
     RIGHT:     39,
     DOWN:      40,
-    LEFT:      37,
+    INS:       45,
+    DEL:       46,
+    F1:        112,
+    F2:        113,
+    F3:        114,
+    F4:        115,
+    F5:        116,
+    F6:        117,
+    F7:        118,
+    F8:        119,
+    F9:        120,
+    F10:       121,
+    F11:       122,
+    F12:       123,
+    NUMLK:     144,
 
     // Cursor types
     ARROW:    'default',
@@ -351,7 +371,8 @@
   // Typed Arrays: fallback to WebGL arrays or Native JS arrays if unavailable
   function setupTypedArray(name, fallback) {
     // check if TypedArray exists
-    if (typeof this[name] !== "function") {
+    // typeof on Minefield and Chrome return function, typeof on Webkit returns object.
+    if (typeof this[name] !== "function" && typeof this[name] !== "object") {
       // nope.. check if WebGLArray exists
       if (typeof this[fallback] === "function") {
         this[name] = this[fallback];
@@ -369,161 +390,180 @@
   }
 
   setupTypedArray("Float32Array", "WebGLFloatArray");
+  setupTypedArray("Int32Array",   "WebGLIntArray");
   setupTypedArray("Uint16Array",  "WebGLUnsignedShortArray");
   setupTypedArray("Uint8Array",   "WebGLUnsignedByteArray");
 
   /**
-   * An ArrayList stores a variable number of objects.
-   *
-   * @param {int} initialCapacity optional defines the initial capacity of the list, it's empty by default
-   *
-   * @returns {ArrayList} new ArrayList object
-   */
-  var ArrayList = function() {
-    function createArrayList(args) {
-      var arr = [];
-      for (var i = 0; i < args[0]; i++) {
-        arr[i] = (args.length > 1 ? createArrayList(args.slice(1)) : 0 );
-      }
-
-      /**
-       * @member ArrayList
-       * ArrayList.get() Returns the element at the specified position in this list.
-       *
-       * @param {int} i index of element to return
-       *
-       * @returns {Object} the element at the specified position in this list.
-       */
-      arr.get = function(i) {
-        return this[i];
+  * An ArrayList stores a variable number of objects.
+  *
+  * @param {int} initialCapacity optional defines the initial capacity of the list, it's empty by default
+  *
+  * @returns {ArrayList} new ArrayList object
+  */
+  var ArrayList = (function() {
+    function Iterator(array) {
+      var index = 0;
+      this.hasNext = function() {
+        return index < array.length;
       };
 
-      /**
-       * @member ArrayList
-       * ArrayList.contains() Returns true if this list contains the specified element.
-       *
-       * @param {Object} item element whose presence in this List is to be tested.
-       *
-       * @returns {boolean} true if the specified element is present; false otherwise.
-       */
-      arr.contains = function(item) {
-        return this.indexOf(item) !== -1;
+      this.next = function() {
+        return array[index++];
       };
 
-      /**
-       * @member ArrayList
-       * ArrayList.add() Adds the specified element to this list. 
-       *
-       * @param {int}    index  optional index at which the specified element is to be inserted
-       * @param {Object} object element to be added to the list 
-       */
-      arr.add = function() {
-        if (arguments.length === 1) {
-          this.push(arguments[0]); // for add(object)
-        } else if (arguments.length === 2) {
-          if (typeof arguments[0] === 'number') {
-            if (arguments[0] >= 0 && arguments[0] <= this.length) {
-              this.splice(arguments[0], 0, arguments[1]); // for add(index, object)
-            } else {
-              throw(arguments[0] + " is not a valid index");
-            }
-          } else {
-            throw(typeof arguments[0] + " is not a number");
-          }
-        } else {
-          throw("Please use the proper number of parameters.");
-        }
+      this.remove = function() {
+        array.splice(index, 1);
       };
-
-      /**
-       * @member ArrayList
-       * ArrayList.set() Replaces the element at the specified position in this list with the specified element.
-       *
-       * @param {int}    index  index of element to replace
-       * @param {Object} object element to be stored at the specified position
-       */
-      arr.set = function() {
-        if (arguments.length === 2) {
-          if (typeof arguments[0] === 'number') {
-            if (arguments[0] >= 0 && arguments[0] < this.length) {
-              this.splice(arguments[0], 1, arguments[1]);
-            } else {
-              throw(arguments[0] + " is not a valid index.");
-            }
-          } else {
-            throw(typeof arguments[0] + " is not a number");
-          }
-        } else {
-          throw("Please use the proper number of parameters.");
-        }
-      };
-
-      /**
-       * @member ArrayList
-       * ArrayList.size() Returns the number of elements in this list.
-       *
-       * @returns {int} the number of elements in this list
-       */
-      arr.size = function() {
-        return this.length;
-      };
-
-      /**
-       * @member ArrayList
-       * ArrayList.clear() Removes all of the elements from this list. The list will be empty after this call returns.
-       */
-      arr.clear = function() {
-        this.length = 0;
-      };
-
-      /**
-       * @member ArrayList
-       * ArrayList.remove() Removes the element at the specified position in this list.
-       * Shifts any subsequent elements to the left (subtracts one from their indices).
-       *
-       * @param {int} index the index of the element to removed.
-       *
-       * @returns {Object} the element that was removed from the list
-       */
-      arr.remove = function(i) {
-        return this.splice(i, 1)[0];
-      };
-
-      /**
-       * @member ArrayList
-       * ArrayList.isEmpty() Tests if this list has no elements.
-       *
-       * @returns {boolean} true if this list has no elements; false otherwise
-       */
-      arr.isEmpty = function() {
-        return !this.length;
-      };
-
-      /**
-       * @member ArrayList
-       * ArrayList.clone() Returns a shallow copy of this ArrayList instance. (The elements themselves are not copied.)
-       *
-       * @returns {ArrayList} a clone of this ArrayList instance
-       */
-      arr.clone = function() {
-        return this.slice(0);
-      };
-
-      /**
-       * @member ArrayList
-       * ArrayList.toArray() Returns an array containing all of the elements in this list in the correct order.
-       *
-       * @returns {Object[]} Returns an array containing all of the elements in this list in the correct order
-       */
-      arr.toArray = function() {
-        return this.slice(0);
-      };
-
-      return arr;
     }
 
-    return createArrayList(Array.prototype.slice.call(arguments));
-  };
+    function ArrayList() {
+      var array = arguments.length === 0 ? [] : 
+        typeof arguments[0] === 'number' ? new Array(0 | arguments[0]) :
+        arguments[0];
+
+      /**
+      * @member ArrayList
+      * ArrayList.get() Returns the element at the specified position in this list.
+      *
+      * @param {int} i index of element to return
+      *
+      * @returns {Object} the element at the specified position in this list.
+      */
+      this.get = function(i) {
+        return array[i];
+      };
+
+      /**
+      * @member ArrayList
+      * ArrayList.contains() Returns true if this list contains the specified element.
+      *
+      * @param {Object} item element whose presence in this List is to be tested.
+      *
+      * @returns {boolean} true if the specified element is present; false otherwise.
+      */
+      this.contains = function(item) {
+        return array.indexOf(item) !== -1;
+      };
+
+      /**
+      * @member ArrayList
+      * ArrayList.add() Adds the specified element to this list. 
+      *
+      * @param {int}    index  optional index at which the specified element is to be inserted
+      * @param {Object} object element to be added to the list 
+      */
+      this.add = function() {
+        if (arguments.length === 1) {
+          array.push(arguments[0]); // for add(Object)
+        } else if (arguments.length === 2) {
+          var arg0 = arguments[0];
+          if (typeof arg0 === 'number') {
+            if (arg0 >= 0 && arg0 <= array.length) {
+              array.splice(arg0, 0, arguments[1]); // for add(i, Object)
+            } else {
+              throw(arg0 + " is not a valid index");
+            }
+          } else {
+            throw(typeof arg0 + " is not a number");
+          }
+        } else {
+          throw("Please use the proper number of parameters.");
+        }
+      };
+
+      /**
+      * @member ArrayList
+      * ArrayList.set() Replaces the element at the specified position in this list with the specified element.
+      *
+      * @param {int}    index  index of element to replace
+      * @param {Object} object element to be stored at the specified position
+      */
+      this.set = function() {
+        if (arguments.length === 2) {
+          var arg0 = arguments[0];
+          if (typeof arg0 === 'number') {
+            if (arg0 >= 0 && arg0 < array.length) {
+              array.splice(arg0, 1, arguments[1]);
+            } else {
+              throw(arg0 + " is not a valid index.");
+            }
+          } else {
+            throw(typeof arg0 + " is not a number");
+          }
+        } else {
+          throw("Please use the proper number of parameters.");
+        }
+      };
+
+      /**
+      * @member ArrayList
+      * ArrayList.size() Returns the number of elements in this list.
+      *
+      * @returns {int} the number of elements in this list
+      */
+      this.size = function() {
+        return array.length;
+      };
+
+      /**
+      * @member ArrayList
+      * ArrayList.clear() Removes all of the elements from this list. The list will be empty after this call returns.
+      */
+      this.clear = function() {
+        array.length = 0;
+      };
+
+      /**
+      * @member ArrayList
+      * ArrayList.remove() Removes the element at the specified position in this list.
+      * Shifts any subsequent elements to the left (subtracts one from their indices).
+      *
+      * @param {int} index the index of the element to removed.
+      *
+      * @returns {Object} the element that was removed from the list
+      */
+      this.remove = function(i) {
+        return array.splice(i, 1)[0];
+      };
+
+      /**
+      * @member ArrayList
+      * ArrayList.isEmpty() Tests if this list has no elements.
+      *
+      * @returns {boolean} true if this list has no elements; false otherwise
+      */
+      this.isEmpty = function() {
+        return !array.length;
+      };
+
+      /**
+      * @member ArrayList
+      * ArrayList.clone() Returns a shallow copy of this ArrayList instance. (The elements themselves are not copied.)
+      *
+      * @returns {ArrayList} a clone of this ArrayList instance
+      */
+      this.clone = function() {
+        return new ArrayList(array.slice(0));
+      };
+
+      /**
+      * @member ArrayList
+      * ArrayList.toArray() Returns an array containing all of the elements in this list in the correct order.
+      *
+      * @returns {Object[]} Returns an array containing all of the elements in this list in the correct order
+      */
+      this.toArray = function() {
+        return array.slice(0);
+      };
+
+      this.iterator = function() {
+        return new Iterator(array);
+      };
+    }
+
+    return ArrayList;
+  }());
 
   /**
   * A HashMap stores a collection of objects, each referenced by a key. This is similar to an Array, only 
@@ -1073,16 +1113,28 @@
     return PVector;
   }());
 
-  var Processing = this.Processing = function Processing(curElement, aCode) {
-    var p = this;
+  // Building defaultScope. Changing of the prototype protects 
+  // internal Processing code from the changes in defaultScope
+  function DefaultScope() {}
+  DefaultScope.prototype = PConstants; 
 
-    // Include Package Classes -- do this differently in the future.
-    p.ArrayList   = ArrayList;
-    p.HashMap     = HashMap;
-    p.PVector     = PVector;
-    //p.PImage    = PImage;     // TODO
-    //p.PShape    = PShape;     // TODO
-    //p.PShapeSVG = PShapeSVG;  // TODO
+  var defaultScope = new DefaultScope();
+  defaultScope.ArrayList   = ArrayList;
+  defaultScope.HashMap     = HashMap;
+  defaultScope.PVector     = PVector;
+  //defaultScope.PImage    = PImage;     // TODO
+  //defaultScope.PShape    = PShape;     // TODO
+  //defaultScope.PShapeSVG = PShapeSVG;  // TODO
+
+  var Processing = this.Processing = function Processing(curElement, aCode) {
+    // Previously we allowed calling Processing as a func instead of ctor, but no longer.
+    if (!(this instanceof Processing)) {
+      throw("called Processing constructor as if it were a function: missing 'new'.");
+    }
+
+    // When something new is added to "p." it must also be added to the "names" array.
+    // The names array contains the names of everything that is inside "p."
+    var p = this;
 
     // PJS specific (non-p5) methods and properties to externalize
     p.externals = {
@@ -1097,11 +1149,11 @@
     p.use3DContext    = false; // default '2d' canvas context
 
     /**
-     * Confirms if a Processing program is "focused", meaning that it is 
-     * active and will accept input from mouse or keyboard. This variable 
-     * is "true" if it is focused and "false" if not. This variable is 
-     * often used when you want to warn people they need to click on the 
-     * browser before it will work.
+    * Confirms if a Processing program is "focused", meaning that it is 
+    * active and will accept input from mouse or keyboard. This variable 
+    * is "true" if it is focused and "false" if not. This variable is 
+    * often used when you want to warn people they need to click on the 
+    * browser before it will work.
     */
     p.focused         = true;
     p.breakShape      = false;
@@ -1126,9 +1178,9 @@
     p.mouseScrolled   = undef;
     p.key             = undef;
     p.keyCode         = undef;
-    p.keyPressed      = undef;
-    p.keyReleased     = undef;
-    p.keyTyped        = undef;
+    p.keyPressed      = function(){};  // needed to remove function checks
+    p.keyReleased     = function(){};
+    p.keyTyped        = function(){};
     p.draw            = undef;
     p.setup           = undef;
 
@@ -1198,9 +1250,10 @@
         pathOpen = false,
         mouseDragging = false,
         curColorMode = PConstants.RGB,
-        curTint = function() {},
+        curTint = null,
         curTextSize = 12,
         curTextFont = "Arial",
+        curTextLeading = 14,
         getLoaded = false,
         start = new Date().getTime(),
         timeSinceLastFPS = start,
@@ -1212,6 +1265,14 @@
         bezierDrawMatrix,
         bezierBasisInverse,
         bezierBasisMatrix,
+        // Keys and Keystrokes
+        firstCodedDown = true,    // first coded key stroke
+        firstEDGKeyDown = true,   // first Enter - Delete Google key stroke
+        firstEDMKeyDown = true,   // first Enter - Delete Mozilla key stroke
+        firstMKeyDown = true,     // first Mozilla key stroke
+        firstGKeyDown = true,     // first Google key stroke
+        gRefire = false,          // Google refire
+        curContextCache = { attributes: {}, locations: {} },    
         // Shaders
         programObject3D,
         programObject2D,
@@ -1229,6 +1290,7 @@
         pointBuffer,
         shapeTexVBO,
         canTex,   // texture for createGraphics
+        textTex,   // texture for 3d tex
         curTexture = {width:0,height:0},
         curTextureMode = PConstants.IMAGE,
         usingTexture = false,
@@ -1246,7 +1308,10 @@
         isContextReplaced = false,
         setPixelsCached,
         maxPixelsCached = 1000,
-        codedKeys = [PConstants.SHIFT, PConstants.CONTROL, PConstants.ALT, PConstants.UP, PConstants.RIGHT, PConstants.DOWN, PConstants.LEFT];
+        codedKeys = [ PConstants.SHIFT, PConstants.CONTROL, PConstants.ALT, PConstants.CAPSLK, PConstants.PGUP, PConstants.PGDN, 
+                      PConstants.END, PConstants.HOME, PConstants.LEFT, PConstants.UP, PConstants.RIGHT, PConstants.DOWN, PConstants.NUMLK,
+                      PConstants.INS, PConstants.F1, PConstants.F2, PConstants.F3, PConstants.F4, PConstants.F5, PConstants.F6, PConstants.F7,
+                      PConstants.F8, PConstants.F9, PConstants.F10, PConstants.F11, PConstants.F12 ];
 
     // Get padding and border style widths for mouse offsets
     var stylePaddingLeft, stylePaddingTop, styleBorderLeft, styleBorderTop;
@@ -1764,26 +1829,30 @@
     ////////////////////////////////////////////////////////////////////////////
 
     /*
-     * Sets a uniform variable in a program object to a particular
-     * value. Before calling this function, ensure the correct 
-     * program object has been installed as part of the current 
-     * rendering state by calling useProgram.
-     *
-     * On some systems, if the variable exists in the shader but isn't used,
-     * the compiler will optimize it out and this function will fail.
-     *
-     * @param {WebGLProgram} programObj program object returned from 
-     * createProgramObject
-     * @param {String} varName the name of the variable in the shader
-     * @param {float | Array} varValue either a scalar value or an Array
-     *
-     * @returns none
-     * 
-     * @see uniformi
-     * @see uniformMatrix
+    * Sets a uniform variable in a program object to a particular
+    * value. Before calling this function, ensure the correct 
+    * program object has been installed as part of the current 
+    * rendering state by calling useProgram.
+    *
+    * On some systems, if the variable exists in the shader but isn't used,
+    * the compiler will optimize it out and this function will fail.
+    *
+    * @param {WebGLProgram} programObj program object returned from 
+    * createProgramObject
+    * @param {String} varName the name of the variable in the shader
+    * @param {float | Array} varValue either a scalar value or an Array
+    *
+    * @returns none
+    * 
+    * @see uniformi
+    * @see uniformMatrix
     */
-    function uniformf(programObj, varName, varValue) {
-      var varLocation = curContext.getUniformLocation(programObj, varName);
+    function uniformf(cacheId, programObj, varName, varValue) {
+      var varLocation = curContextCache.locations[cacheId];
+      if(varLocation === undef) {
+        varLocation = curContext.getUniformLocation(programObj, varName);
+        curContextCache.locations[cacheId] = varLocation;
+      }
       // the variable won't be found if it was optimized out.
       if (varLocation !== -1) {
         if (varValue.length === 4) {
@@ -1799,26 +1868,30 @@
     }
 
     /**
-     * Sets a uniform int or int array in a program object to a particular
-     * value. Before calling this function, ensure the correct 
-     * program object has been installed as part of the current 
-     * rendering state.
-     *
-     * On some systems, if the variable exists in the shader but isn't used,
-     * the compiler will optimize it out and this function will fail.
-     *
-     * @param {WebGLProgram} programObj program object returned from 
-     * createProgramObject
-     * @param {String} varName the name of the variable in the shader
-     * @param {int | Array} varValue either a scalar value or an Array
-     *
-     * @returns none
-     * 
-     * @see uniformf
-     * @see uniformMatrix
+    * Sets a uniform int or int array in a program object to a particular
+    * value. Before calling this function, ensure the correct 
+    * program object has been installed as part of the current 
+    * rendering state.
+    *
+    * On some systems, if the variable exists in the shader but isn't used,
+    * the compiler will optimize it out and this function will fail.
+    *
+    * @param {WebGLProgram} programObj program object returned from 
+    * createProgramObject
+    * @param {String} varName the name of the variable in the shader
+    * @param {int | Array} varValue either a scalar value or an Array
+    *
+    * @returns none
+    * 
+    * @see uniformf
+    * @see uniformMatrix
     */
-    function uniformi(programObj, varName, varValue) {
-      var varLocation = curContext.getUniformLocation(programObj, varName);
+    function uniformi(cacheId, programObj, varName, varValue) {
+      var varLocation = curContextCache.locations[cacheId];
+      if(varLocation === undef) {
+        varLocation = curContext.getUniformLocation(programObj, varName);
+        curContextCache.locations[cacheId] = varLocation;
+      }
       // the variable won't be found if it was optimized out.
       if (varLocation !== -1) {
         if (varValue.length === 4) {
@@ -1834,25 +1907,29 @@
     }
 
     /**
-     * Binds the VBO, sets the vertex attribute data for the program 
-     * object and enables the attribute.
-     * 
-     * On some systems, if the attribute exists in the shader but 
-     * isn't used, the compiler will optimize it out and this 
-     * function will fail.
-     *
-     * @param {WebGLProgram} programObj program object returned from 
-     * createProgramObject
-     * @param {String} varName the name of the variable in the shader
-     * @param {int} size the number of components per vertex attribute
-     * @param {WebGLBuffer} VBO Vertex Buffer Object
-     *
-     * @returns none
-     *
-     * @see disableVertexAttribPointer
+    * Binds the VBO, sets the vertex attribute data for the program 
+    * object and enables the attribute.
+    * 
+    * On some systems, if the attribute exists in the shader but 
+    * isn't used, the compiler will optimize it out and this 
+    * function will fail.
+    *
+    * @param {WebGLProgram} programObj program object returned from 
+    * createProgramObject
+    * @param {String} varName the name of the variable in the shader
+    * @param {int} size the number of components per vertex attribute
+    * @param {WebGLBuffer} VBO Vertex Buffer Object
+    *
+    * @returns none
+    *
+    * @see disableVertexAttribPointer
     */
-    function vertexAttribPointer(programObj, varName, size, VBO) {
-      var varLocation = curContext.getAttribLocation(programObj, varName);
+    function vertexAttribPointer(cacheId, programObj, varName, size, VBO) {
+      var varLocation = curContextCache.attributes[cacheId];
+      if(varLocation === undef) {
+        varLocation = curContext.getAttribLocation(programObj, varName);
+        curContextCache.attributes[cacheId] = varLocation;
+      }
       if (varLocation !== -1) {
         curContext.bindBuffer(curContext.ARRAY_BUFFER, VBO);
         curContext.vertexAttribPointer(varLocation, size, curContext.FLOAT, false, 0, 0);
@@ -1861,46 +1938,54 @@
     }
 
     /**
-     * Disables a program object attribute from being sent to WebGL.
-     *
-     * @param {WebGLProgram} programObj program object returned from 
-     * createProgramObject
-     * @param {String} varName name of the attribute
-     *
-     * @returns none
-     *
-     * @see vertexAttribPointer
+    * Disables a program object attribute from being sent to WebGL.
+    *
+    * @param {WebGLProgram} programObj program object returned from 
+    * createProgramObject
+    * @param {String} varName name of the attribute
+    *
+    * @returns none
+    *
+    * @see vertexAttribPointer
     */
-    function disableVertexAttribPointer(programObj, varName){
-      var varLocation = curContext.getAttribLocation(programObj, varName);
+    function disableVertexAttribPointer(cacheId, programObj, varName){
+      var varLocation = curContextCache.attributes[cacheId];
+      if(varLocation === undef) {
+        varLocation = curContext.getAttribLocation(programObj, varName);
+        curContextCache.attributes[cacheId] = varLocation;
+      }
       if (varLocation !== -1) {
         curContext.disableVertexAttribArray(varLocation);
       }
     }
 
     /**
-     * Sets the value of a uniform matrix variable in a program 
-     * object. Before calling this function, ensure the correct 
-     * program object has been installed as part of the current 
-     * rendering state.
-     *
-     * On some systems, if the variable exists in the shader but 
-     * isn't used, the compiler will optimize it out and this 
-     * function will fail.
-     *
-     * @param {WebGLProgram} programObj program object returned from 
-     * createProgramObject
-     * @param {String} varName the name of the variable in the shader
-     * @param {boolean} transpose must be false
-     * @param {Array} matrix an array of 4, 9 or 16 values
-     *
-     * @returns none
-     * 
-     * @see uniformi
-     * @see uniformf
+    * Sets the value of a uniform matrix variable in a program 
+    * object. Before calling this function, ensure the correct 
+    * program object has been installed as part of the current 
+    * rendering state.
+    *
+    * On some systems, if the variable exists in the shader but 
+    * isn't used, the compiler will optimize it out and this 
+    * function will fail.
+    *
+    * @param {WebGLProgram} programObj program object returned from 
+    * createProgramObject
+    * @param {String} varName the name of the variable in the shader
+    * @param {boolean} transpose must be false
+    * @param {Array} matrix an array of 4, 9 or 16 values
+    *
+    * @returns none
+    * 
+    * @see uniformi
+    * @see uniformf
     */
-    function uniformMatrix(programObj, varName, transpose, matrix) {
-      var varLocation = curContext.getUniformLocation(programObj, varName);
+    function uniformMatrix(cacheId, programObj, varName, transpose, matrix) {
+      var varLocation = curContextCache.locations[cacheId];
+      if(varLocation === undef) {
+        varLocation = curContext.getUniformLocation(programObj, varName);
+        curContextCache.locations[cacheId] = varLocation;
+      }
       // the variable won't be found if it was optimized out.
       if (varLocation !== -1) {
         if (matrix.length === 16) {
@@ -1942,12 +2027,12 @@
     };
 
     /**
-     * Creates a WebGL program object.
-     *
-     * @param {String} vetexShaderSource
-     * @param {String} fragmentShaderSource
-     * 
-     * @returns {WebGLProgram} A program object
+    * Creates a WebGL program object.
+    *
+    * @param {String} vetexShaderSource
+    * @param {String} fragmentShaderSource
+    * 
+    * @returns {WebGLProgram} A program object
     */
     var createProgramObject = function(curContext, vetexShaderSource, fragmentShaderSource) {
       var vertexShaderObject = curContext.createShader(curContext.VERTEX_SHADER);
@@ -1999,18 +2084,18 @@
     };
 
     /**
-     * Datatype for storing shapes. Processing can currently load and display SVG (Scalable Vector Graphics) shapes.
-     * Before a shape is used, it must be loaded with the <b>loadShape()</b> function. The <b>shape()</b> function is used to draw the shape to the display window.
-     * The <b>PShape</b> object contain a group of methods, linked below, that can operate on the shape data. 
-     * <br><br>The <b>loadShape()</b> method supports SVG files created with Inkscape and Adobe Illustrator.
-     * It is not a full SVG implementation, but offers some straightforward support for handling vector data.
-     * 
-     * @param {int} family the shape type, one of GROUP, PRIMITIVE, PATH, or GEOMETRY
-     *
-     * @see #shape()
-     * @see #loadShape()
-     * @see #shapeMode()
-     */
+    * Datatype for storing shapes. Processing can currently load and display SVG (Scalable Vector Graphics) shapes.
+    * Before a shape is used, it must be loaded with the <b>loadShape()</b> function. The <b>shape()</b> function is used to draw the shape to the display window.
+    * The <b>PShape</b> object contain a group of methods, linked below, that can operate on the shape data. 
+    * <br><br>The <b>loadShape()</b> method supports SVG files created with Inkscape and Adobe Illustrator.
+    * It is not a full SVG implementation, but offers some straightforward support for handling vector data.
+    * 
+    * @param {int} family the shape type, one of GROUP, PRIMITIVE, PATH, or GEOMETRY
+    *
+    * @see #shape()
+    * @see #loadShape()
+    * @see #shapeMode()
+    */
     var PShape = p.PShape = function(family) {
       this.family    = family || PConstants.GROUP;
       this.visible   = true;
@@ -2028,38 +2113,38 @@
       this.parent    = null;
       
       /**
-       * PShape methods
-       * missing: findChild(), apply(), contains(), findChild(), getPrimitive(), getParams(), getVertex() , getVertexCount(), 
-       * getVertexCode() , getVertexCodes() , getVertexCodeCount(), getVertexX(), getVertexY(), getVertexZ()
-       */
+      * PShape methods
+      * missing: findChild(), apply(), contains(), findChild(), getPrimitive(), getParams(), getVertex() , getVertexCount(), 
+      * getVertexCode() , getVertexCodes() , getVertexCodeCount(), getVertexX(), getVertexY(), getVertexZ()
+      */
       
       /**
-       * @member PShape
-       * The isVisible() function returns a boolean value "true" if the image is set to be visible, "false" if not. This is modified with the <b>setVisible()</b> parameter.
-       * <br><br>The visibility of a shape is usually controlled by whatever program created the SVG file.
-       * For instance, this parameter is controlled by showing or hiding the shape in the layers palette in Adobe Illustrator.
-       * 
-       * @return {boolean}  returns "true" if the image is set to be visible, "false" if not
-       */
+      * @member PShape
+      * The isVisible() function returns a boolean value "true" if the image is set to be visible, "false" if not. This is modified with the <b>setVisible()</b> parameter.
+      * <br><br>The visibility of a shape is usually controlled by whatever program created the SVG file.
+      * For instance, this parameter is controlled by showing or hiding the shape in the layers palette in Adobe Illustrator.
+      * 
+      * @return {boolean}  returns "true" if the image is set to be visible, "false" if not
+      */
       this.isVisible = function(){
         return this.visible;
       };
       /**
-       * @member PShape
-       * The setVisible() function sets the shape to be visible or invisible. This is determined by the value of the <b>visible</b> parameter.
-       * <br><br>The visibility of a shape is usually controlled by whatever program created the SVG file.
-       * For instance, this parameter is controlled by showing or hiding the shape in the layers palette in Adobe Illustrator.
-       *
-       * @param {boolean} visible "false" makes the shape invisible and "true" makes it visible
-       */
+      * @member PShape
+      * The setVisible() function sets the shape to be visible or invisible. This is determined by the value of the <b>visible</b> parameter.
+      * <br><br>The visibility of a shape is usually controlled by whatever program created the SVG file.
+      * For instance, this parameter is controlled by showing or hiding the shape in the layers palette in Adobe Illustrator.
+      *
+      * @param {boolean} visible "false" makes the shape invisible and "true" makes it visible
+      */
       this.setVisible = function (visible){
         this.visible = visible;
       };
       /**
-       * @member PShape
-       * The disableStyle() function disables the shape's style data and uses Processing's current styles. Styles include attributes such as colors, stroke weight, and stroke joints.
-       * Overrides this shape's style information and uses PGraphics styles and colors. Identical to ignoreStyles(true). Also disables styles for all child shapes.
-       */
+      * @member PShape
+      * The disableStyle() function disables the shape's style data and uses Processing's current styles. Styles include attributes such as colors, stroke weight, and stroke joints.
+      * Overrides this shape's style information and uses PGraphics styles and colors. Identical to ignoreStyles(true). Also disables styles for all child shapes.
+      */
       this.disableStyle = function(){
         this.style = false;
         for(var i = 0; i < this.children.length; i++)
@@ -2068,9 +2153,9 @@
         }
       };
       /**
-       * @member PShape
-       * The enableStyle() function enables the shape's style data and ignores Processing's current styles. Styles include attributes such as colors, stroke weight, and stroke joints.
-       */
+      * @member PShape
+      * The enableStyle() function enables the shape's style data and ignores Processing's current styles. Styles include attributes such as colors, stroke weight, and stroke joints.
+      */
       this.enableStyle = function(){
         this.style = true;
         for(var i = 0; i < this.children.length; i++)
@@ -2079,52 +2164,52 @@
         }
       };
       /**
-       * @member PShape
-       * The getFamily function returns the shape type
-       * 
-       * @return {int} the shape type, one of GROUP, PRIMITIVE, PATH, or GEOMETRY
-       */
+      * @member PShape
+      * The getFamily function returns the shape type
+      * 
+      * @return {int} the shape type, one of GROUP, PRIMITIVE, PATH, or GEOMETRY
+      */
       this.getFamily = function(){
         return this.family;
       };
       /**
-       * @member PShape
-       * The getWidth() function gets the width of the drawing area (not necessarily the shape boundary). 
-       */
+      * @member PShape
+      * The getWidth() function gets the width of the drawing area (not necessarily the shape boundary). 
+      */
       this.getWidth = function(){
         return this.width;
       };
       /**
-       * @member PShape
-       * The getHeight() function gets the height of the drawing area (not necessarily the shape boundary). 
-       */
+      * @member PShape
+      * The getHeight() function gets the height of the drawing area (not necessarily the shape boundary). 
+      */
       this.getHeight = function(){
         return this.height;
       };
       /**
-       * @member PShape
-       * The setName() function sets the name of the shape
-       *
-       * @param {String} name the name of the shape
-       */
+      * @member PShape
+      * The setName() function sets the name of the shape
+      *
+      * @param {String} name the name of the shape
+      */
       this.setName = function(name){
         this.name = name;
       };
       /**
-       * @member PShape
-       * The getName() function returns the name of the shape
-       *
-       * @return {String} the name of the shape
-       */
+      * @member PShape
+      * The getName() function returns the name of the shape
+      *
+      * @return {String} the name of the shape
+      */
       this.getName = function(){
         return this.name;
       };
       /**
-       * @member PShape
-       * Called by the following (the shape() command adds the g)
-       * PShape s = loadShapes("blah.svg");
-       * shape(s);
-       */
+      * @member PShape
+      * Called by the following (the shape() command adds the g)
+      * PShape s = loadShapes("blah.svg");
+      * shape(s);
+      */
       this.draw = function(){
         if (this.visible) {
           this.pre();
@@ -2133,9 +2218,9 @@
         }
       };
       /**
-       * @member PShape
-       * the drawImpl() function draws the SVG document.
-       */
+      * @member PShape
+      * the drawImpl() function draws the SVG document.
+      */
       this.drawImpl = function(){
         if (this.family === PConstants.GROUP) {
           this.drawGroup();
@@ -2148,9 +2233,9 @@
         }
       };
       /**
-       * @member PShape
-       * The drawPath() function draws the <path> part of the SVG document.
-       */
+      * @member PShape
+      * The drawPath() function draws the <path> part of the SVG document.
+      */
       this.drawPath = function(){
         if (this.vertices.length === 0) { return; }
 
@@ -2229,9 +2314,9 @@
         p.endShape(this.close ? PConstants.CLOSE : PConstants.OPEN);
       };
       /**
-       * @member PShape
-       * The drawGeometry() function draws the geometry part of the SVG document.
-       */
+      * @member PShape
+      * The drawGeometry() function draws the geometry part of the SVG document.
+      */
       this.drawGeometry = function() {
         p.beginShape(this.kind);
         var i;
@@ -2252,18 +2337,18 @@
         p.endShape();
       };
       /**
-       * @member PShape
-       * The drawGroup() function draws the <g> part of the SVG document.
-       */
+      * @member PShape
+      * The drawGroup() function draws the <g> part of the SVG document.
+      */
       this.drawGroup = function() {
         for (var i = 0; i < this.children.length; i++) {
           this.children[i].draw();
         }
       };
       /**
-       * @member PShape
-       * The drawPrimitive() function draws SVG document shape elements. These can be point, line, triangle, quad, rect, ellipse, arc, box, or sphere.
-       */
+      * @member PShape
+      * The drawPrimitive() function draws SVG document shape elements. These can be point, line, triangle, quad, rect, ellipse, arc, box, or sphere.
+      */
       this.drawPrimitive = function() {
         switch (this.kind) {
           case PConstants.POINT:
@@ -2319,9 +2404,9 @@
         }
       };
       /**
-       * @member PShape
-       * The pre() function performs the preparations before the SVG is drawn. This includes doing transformations and storing previous styles.
-       */
+      * @member PShape
+      * The pre() function performs the preparations before the SVG is drawn. This includes doing transformations and storing previous styles.
+      */
       this.pre = function() {
         if (this.matrix) {
           p.pushMatrix();
@@ -2334,9 +2419,9 @@
         }
       };
       /**
-       * @member PShape
-       * The post() function performs the necessary actions after the SVG is drawn. This includes removing transformations and removing added styles.
-       */
+      * @member PShape
+      * The post() function performs the necessary actions after the SVG is drawn. This includes removing transformations and removing added styles.
+      */
       this.post = function() {
         if (this.matrix) {
           p.popMatrix();
@@ -2346,9 +2431,9 @@
         }
       };
       /**
-       * @member PShape
-       * The styles() function changes the Processing's current styles
-       */
+      * @member PShape
+      * The styles() function changes the Processing's current styles
+      */
       this.styles = function() {
         if (this.stroke) {
           p.stroke(this.strokeColor);
@@ -2367,16 +2452,16 @@
         }
       };
       /**
-       * @member PShape
-       * The getChild() function extracts a child shape from a parent shape. Specify the name of the shape with the <b>target</b> parameter or the 
-       * layer position of the shape to get with the <b>index</b> parameter.
-       * The shape is returned as a <b>PShape</b> object, or <b>null</b> is returned if there is an error.
-       *
-       * @param {String} target   the name of the shape to get
-       * @param {int} index   the layer position of the shape to get
-       * 
-       * @return {PShape} returns a child element of a shape as a PShape object or null if there is an error
-       */
+      * @member PShape
+      * The getChild() function extracts a child shape from a parent shape. Specify the name of the shape with the <b>target</b> parameter or the 
+      * layer position of the shape to get with the <b>index</b> parameter.
+      * The shape is returned as a <b>PShape</b> object, or <b>null</b> is returned if there is an error.
+      *
+      * @param {String} target   the name of the shape to get
+      * @param {int} index   the layer position of the shape to get
+      * 
+      * @return {PShape} returns a child element of a shape as a PShape object or null if there is an error
+      */
       this.getChild = function() {
         if (typeof arguments[0] === 'number') {
           return this.children[arguments[0]];
@@ -2406,20 +2491,20 @@
         }
       };
       /**
-       * @member PShape
-       * The getChildCount() returns the number of children
-       * 
-       * @return {int} returns a count of children
-       */
+      * @member PShape
+      * The getChildCount() returns the number of children
+      * 
+      * @return {int} returns a count of children
+      */
       this.getChildCount = function () {
         return this.children.length;
       };
       /**
-       * @member PShape
-       * The addChild() adds a child to the PShape.
-       * 
-       * @param {PShape} child the child to add
-       */
+      * @member PShape
+      * The addChild() adds a child to the PShape.
+      * 
+      * @param {PShape} child the child to add
+      */
       this.addChild = function( child ) {
         this.children.push(child);
         child.parent = this;
@@ -2428,12 +2513,12 @@
         }
       };
       /**
-       * @member PShape
-       * The addName() functions adds a shape to the name lookup table.
-       *
-       * @param {String} name   the name to be added
-       * @param {PShape} shape  the shape 
-       */
+      * @member PShape
+      * The addName() functions adds a shape to the name lookup table.
+      *
+      * @param {String} name   the name to be added
+      * @param {PShape} shape  the shape 
+      */
       this.addName = function(name,  shape) {
         if (this.parent !== null) {
           this.parent.addName( name, shape );
@@ -2442,19 +2527,19 @@
         }
       };
       /**
-       * @member PShape
-       * The translate() function specifies an amount to displace the shape. The <b>x</b> parameter specifies left/right translation, the <b>y</b> parameter specifies up/down translation, and the <b>z</b> parameter specifies translations toward/away from the screen. 
-       * Subsequent calls to the method accumulates the effect. For example, calling <b>translate(50, 0)</b> and then <b>translate(20, 0)</b> is the same as <b>translate(70, 0)</b>. 
-       * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run. 
-       * <br><br>Using this method with the <b>z</b> parameter requires using the P3D or OPENGL parameter in combination with size.
-       *
-       * @param {int|float} x left/right translation
-       * @param {int|float} y up/down translation
-       * @param {int|float} z forward/back translation
-       *
-       * @see PMatrix2D#translate
-       * @see PMatrix3D#translate
-       */
+      * @member PShape
+      * The translate() function specifies an amount to displace the shape. The <b>x</b> parameter specifies left/right translation, the <b>y</b> parameter specifies up/down translation, and the <b>z</b> parameter specifies translations toward/away from the screen. 
+      * Subsequent calls to the method accumulates the effect. For example, calling <b>translate(50, 0)</b> and then <b>translate(20, 0)</b> is the same as <b>translate(70, 0)</b>. 
+      * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run. 
+      * <br><br>Using this method with the <b>z</b> parameter requires using the P3D or OPENGL parameter in combination with size.
+      *
+      * @param {int|float} x left/right translation
+      * @param {int|float} y up/down translation
+      * @param {int|float} z forward/back translation
+      *
+      * @see PMatrix2D#translate
+      * @see PMatrix3D#translate
+      */
       this.translate = function() {
         if(arguments.length === 2)
         {
@@ -2466,12 +2551,12 @@
         }
       };
       /**
-       * @member PShape
-       * The checkMatrix() function makes sure that the shape's matrix is 1) not null, and 2) has a matrix
-       * that can handle <em>at least</em> the specified number of dimensions.
-       *
-       * @param {int} dimensions the specified number of dimensions
-       */
+      * @member PShape
+      * The checkMatrix() function makes sure that the shape's matrix is 1) not null, and 2) has a matrix
+      * that can handle <em>at least</em> the specified number of dimensions.
+      *
+      * @param {int} dimensions the specified number of dimensions
+      */
       this.checkMatrix = function(dimensions) {
         if(this.matrix === null) {
           if(dimensions === 2) {
@@ -2484,66 +2569,77 @@
         }
       };
       /**
-       * @member PShape
-       * The rotateX() function rotates a shape around the x-axis the amount specified by the <b>angle</b> parameter. Angles should be specified in radians (values from 0 to TWO_PI) or converted to radians with the <b>radians()</b> method.
-       * <br><br>Shapes are always rotated around the upper-left corner of their bounding box. Positive numbers rotate objects in a clockwise direction.
-       * Subsequent calls to the method accumulates the effect. For example, calling <b>rotateX(HALF_PI)</b> and then <b>rotateX(HALF_PI)</b> is the same as <b>rotateX(PI)</b>.
-       * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run.  
-       * <br><br>This method requires a 3D renderer. You need to pass P3D or OPENGL as a third parameter into the <b>size()</b> method as shown in the example above.
-       *
-       * @param {float}angle angle of rotation specified in radians
-       *
-       * @see PMatrix3D#rotateX
-       */
+      * @member PShape
+      * The rotateX() function rotates a shape around the x-axis the amount specified by the <b>angle</b> parameter. Angles
+      * should be specified in radians (values from 0 to TWO_PI) or converted to radians with the <b>radians()</b> method.
+      * <br><br>Shapes are always rotated around the upper-left corner of their bounding box. Positive numbers rotate objects
+      * in a clockwise direction. Subsequent calls to the method accumulates the effect. For example, calling <b>rotateX(HALF_PI)</b>
+      * and then <b>rotateX(HALF_PI)</b> is the same as <b>rotateX(PI)</b>.
+      * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run.  
+      * <br><br>This method requires a 3D renderer. You need to pass P3D or OPENGL as a third parameter into the <b>size()</b>
+      *  method as shown in the example above.
+      *
+      * @param {float}angle angle of rotation specified in radians
+      *
+      * @see PMatrix3D#rotateX
+      */
       this.rotateX = function(angle) {
         this.rotate(angle, 1, 0, 0);
       };
       /**
-       * @member PShape
-       * The rotateY() function rotates a shape around the y-axis the amount specified by the <b>angle</b> parameter. Angles should be specified in radians (values from 0 to TWO_PI) or converted to radians with the <b>radians()</b> method.
-       * <br><br>Shapes are always rotated around the upper-left corner of their bounding box. Positive numbers rotate objects in a clockwise direction.
-       * Subsequent calls to the method accumulates the effect. For example, calling <b>rotateY(HALF_PI)</b> and then <b>rotateY(HALF_PI)</b> is the same as <b>rotateY(PI)</b>.
-       * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run. 
-       * <br><br>This method requires a 3D renderer. You need to pass P3D or OPENGL as a third parameter into the <b>size()</b> method as shown in the example above.
-       *
-       * @param {float}angle angle of rotation specified in radians
-       *
-       * @see PMatrix3D#rotateY
-       */
+      * @member PShape
+      * The rotateY() function rotates a shape around the y-axis the amount specified by the <b>angle</b> parameter. Angles
+      * should be specified in radians (values from 0 to TWO_PI) or converted to radians with the <b>radians()</b> method.
+      * <br><br>Shapes are always rotated around the upper-left corner of their bounding box.
+      * Positive numbers rotate objects in a clockwise direction.
+      * Subsequent calls to the method accumulates the effect. For example, calling <b>rotateY(HALF_PI)</b> and
+      * then <b>rotateY(HALF_PI)</b> is the same as <b>rotateY(PI)</b>.
+      * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run. 
+      * <br><br>This method requires a 3D renderer. You need to pass P3D or OPENGL as a third parameter
+      * into the <b>size()</b> method as shown in the example above.
+      *
+      * @param {float}angle angle of rotation specified in radians
+      *
+      * @see PMatrix3D#rotateY
+      */
       this.rotateY = function(angle) {
         this.rotate(angle, 0, 1, 0);
       };
       /**
-       * @member PShape
-       * The rotateZ() function rotates a shape around the z-axis the amount specified by the <b>angle</b> parameter. Angles should be specified in radians (values from 0 to TWO_PI) or converted to radians with the <b>radians()</b> method.
-       * <br><br>Shapes are always rotated around the upper-left corner of their bounding box. Positive numbers rotate objects in a clockwise direction.
-       * Subsequent calls to the method accumulates the effect. For example, calling <b>rotateZ(HALF_PI)</b> and then <b>rotateZ(HALF_PI)</b> is the same as <b>rotateZ(PI)</b>.
-       * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run. 
-       * <br><br>This method requires a 3D renderer. You need to pass P3D or OPENGL as a third parameter into the <b>size()</b> method as shown in the example above.
-       *
-       * @param {float}angle angle of rotation specified in radians
-       *
-       * @see PMatrix3D#rotateZ
-       */
+      * @member PShape
+      * The rotateZ() function rotates a shape around the z-axis the amount specified by the <b>angle</b> parameter. Angles should be
+      * specified in radians (values from 0 to TWO_PI) or converted to radians with the <b>radians()</b> method.
+      * <br><br>Shapes are always rotated around the upper-left corner of their bounding box. Positive numbers rotate objects in a 
+      * clockwise direction. Subsequent calls to the method accumulates the effect. For example, calling <b>rotateZ(HALF_PI)</b> 
+      * and then <b>rotateZ(HALF_PI)</b> is the same as <b>rotateZ(PI)</b>.
+      * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run. 
+      * <br><br>This method requires a 3D renderer. You need to pass P3D or OPENGL as a third parameter into the <b>size()</b> 
+      * method as shown in the example above.
+      *
+      * @param {float}angle angle of rotation specified in radians
+      *
+      * @see PMatrix3D#rotateZ
+      */
       this.rotateZ = function(angle) {
         this.rotate(angle, 0, 0, 1);
       };
       /**
-       * @member PShape
-       * The rotate() function rotates a shape the amount specified by the <b>angle</b> parameter. Angles should be specified in radians (values from 0 to TWO_PI) or converted to radians with the <b>radians()</b> method.
-       * <br><br>Shapes are always rotated around the upper-left corner of their bounding box. Positive numbers rotate objects in a clockwise direction.
-       * Transformations apply to everything that happens after and subsequent calls to the method accumulates the effect.
-       * For example, calling <b>rotate(HALF_PI)</b> and then <b>rotate(HALF_PI)</b> is the same as <b>rotate(PI)</b>.
-       * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run.
-       * If optional parameters x,y,z are supplied, the rotate is about the point (x, y, z).
-       *
-       * @param {float}angle  angle of rotation specified in radians
-       * @param {float}x      x-coordinate of the point
-       * @param {float}y      y-coordinate of the point
-       * @param {float}z      z-coordinate of the point
-       * @see PMatrix2D#rotate
-       * @see PMatrix3D#rotate
-       */
+      * @member PShape
+      * The rotate() function rotates a shape the amount specified by the <b>angle</b> parameter. Angles should be specified 
+      * in radians (values from 0 to TWO_PI) or converted to radians with the <b>radians()</b> method.
+      * <br><br>Shapes are always rotated around the upper-left corner of their bounding box. Positive numbers rotate objects in a clockwise direction.
+      * Transformations apply to everything that happens after and subsequent calls to the method accumulates the effect.
+      * For example, calling <b>rotate(HALF_PI)</b> and then <b>rotate(HALF_PI)</b> is the same as <b>rotate(PI)</b>.
+      * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run.
+      * If optional parameters x,y,z are supplied, the rotate is about the point (x, y, z).
+      *
+      * @param {float}angle  angle of rotation specified in radians
+      * @param {float}x      x-coordinate of the point
+      * @param {float}y      y-coordinate of the point
+      * @param {float}z      z-coordinate of the point
+      * @see PMatrix2D#rotate
+      * @see PMatrix3D#rotate
+      */
       this.rotate = function() {
         if(arguments.length === 1){
           this.checkMatrix(2);
@@ -2554,21 +2650,21 @@
         }
       };
       /**
-       * @member PShape
-       * The scale() function increases or decreases the size of a shape by expanding and contracting vertices. Shapes always scale from the relative origin of their bounding box.
-       * Scale values are specified as decimal percentages. For example, the method call <b>scale(2.0)</b> increases the dimension of a shape by 200%.
-       * Subsequent calls to the method multiply the effect. For example, calling <b>scale(2.0)</b> and then <b>scale(1.5)</b> is the same as <b>scale(3.0)</b>.
-       * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run. 
-       * <br><br>Using this fuction with the <b>z</b> parameter requires passing P3D or OPENGL into the size() parameter.
-       *
-       * @param {float}s      percentage to scale the object
-       * @param {float}x      percentage to scale the object in the x-axis
-       * @param {float}y      percentage to scale the object in the y-axis
-       * @param {float}z      percentage to scale the object in the z-axis
-       *
-       * @see PMatrix2D#scale
-       * @see PMatrix3D#scale
-       */
+      * @member PShape
+      * The scale() function increases or decreases the size of a shape by expanding and contracting vertices. Shapes always scale from the relative origin of their bounding box.
+      * Scale values are specified as decimal percentages. For example, the method call <b>scale(2.0)</b> increases the dimension of a shape by 200%.
+      * Subsequent calls to the method multiply the effect. For example, calling <b>scale(2.0)</b> and then <b>scale(1.5)</b> is the same as <b>scale(3.0)</b>.
+      * This transformation is applied directly to the shape, it's not refreshed each time <b>draw()</b> is run. 
+      * <br><br>Using this fuction with the <b>z</b> parameter requires passing P3D or OPENGL into the size() parameter.
+      *
+      * @param {float}s      percentage to scale the object
+      * @param {float}x      percentage to scale the object in the x-axis
+      * @param {float}y      percentage to scale the object in the y-axis
+      * @param {float}z      percentage to scale the object in the z-axis
+      *
+      * @see PMatrix2D#scale
+      * @see PMatrix3D#scale
+      */
       this.scale = function() {
         if(arguments.length === 2) {
           this.checkMatrix(2);
@@ -2582,26 +2678,26 @@
         }
       };
       /**
-       * @member PShape
-       * The resetMatrix() function resets the matrix
-       *
-       * @see PMatrix2D#reset
-       * @see PMatrix3D#reset
-       */
+      * @member PShape
+      * The resetMatrix() function resets the matrix
+      *
+      * @see PMatrix2D#reset
+      * @see PMatrix3D#reset
+      */
       this.resetMatrix = function() {
         this.checkMatrix(2);
         this.matrix.reset();
       };
       /**
-       * @member PShape
-       * The applyMatrix() function multiplies this matrix by another matrix of type PMatrix3D or PMatrix2D.
-       * Individual elements can also be provided
-       *
-       * @param {PMatrix3D|PMatrix2D} matrix   the matrix to multiply by
-       *
-       * @see PMatrix2D#apply
-       * @see PMatrix3D#apply
-       */
+      * @member PShape
+      * The applyMatrix() function multiplies this matrix by another matrix of type PMatrix3D or PMatrix2D.
+      * Individual elements can also be provided
+      *
+      * @param {PMatrix3D|PMatrix2D} matrix   the matrix to multiply by
+      *
+      * @see PMatrix2D#apply
+      * @see PMatrix3D#apply
+      */
       this.applyMatrix = function(matrix) {
         if (arguments.length === 1) {
           this.applyMatrix(matrix.elements[0], matrix.elements[1], 0, matrix.elements[2],
@@ -2626,22 +2722,22 @@
     };
     
     /**
-     * SVG stands for Scalable Vector Graphics, a portable graphics format. It is
-     * a vector format so it allows for infinite resolution and relatively small
-     * file sizes. Most modern media software can view SVG files, including Adobe
-     * products, Firefox, etc. Illustrator and Inkscape can edit SVG files.
-     *
-     * @param {PApplet} parent     typically use "this"
-     * @param {String} filename    name of the SVG file to load
-     * @param {XMLElement} xml     an XMLElement element
-     * @param {PShapeSVG} parent   the parent PShapeSVG
-     *
-     * @see PShape
-     */  
-    var PShapeSVG = function() {
+    * SVG stands for Scalable Vector Graphics, a portable graphics format. It is
+    * a vector format so it allows for infinite resolution and relatively small
+    * file sizes. Most modern media software can view SVG files, including Adobe
+    * products, Firefox, etc. Illustrator and Inkscape can edit SVG files.
+    *
+    * @param {PApplet} parent     typically use "this"
+    * @param {String} filename    name of the SVG file to load
+    * @param {XMLElement} xml     an XMLElement element
+    * @param {PShapeSVG} parent   the parent PShapeSVG
+    *
+    * @see PShape
+    */  
+    var PShapeSVG = p.PShapeSVG = function() {
       p.PShape.call( this ); // PShape is the base class.
-      if (arguments.length === 1) {
-        this.element  = new p.XMLElement(null, arguments[0]);
+      if (arguments.length === 1) { //xml element coming in
+        this.element  = arguments[0] ;//new p.XMLElement(null, arguments[0]);
         // set values to their defaults according to the SVG spec
         this.vertexCodes         = [];
         this.vertices            = [];
@@ -2763,22 +2859,22 @@
 
     };
     /**
-     * PShapeSVG methods
-     * missing: getChild(), print(), parseStyleAttributes(), styles() - deals with strokeGradient and fillGradient
-     */
+    * PShapeSVG methods
+    * missing: getChild(), print(), parseStyleAttributes(), styles() - deals with strokeGradient and fillGradient
+    */
     PShapeSVG.prototype = {
       /**
-       * @member PShapeSVG
-       * The parseMatrix() function parses the specified SVG matrix into a PMatrix2D. Note that PMatrix2D
-       * is rotated relative to the SVG definition, so parameters are rearranged
-       * here. More about the transformation matrices in
-       * <a href="http://www.w3.org/TR/SVG/coords.html#TransformAttribute">this section</a>
-       * of the SVG documentation.
-       *
-       * @param {String} str text of the matrix param.
-       *
-       * @return {PMatrix2D} a PMatrix2D
-       */
+      * @member PShapeSVG
+      * The parseMatrix() function parses the specified SVG matrix into a PMatrix2D. Note that PMatrix2D
+      * is rotated relative to the SVG definition, so parameters are rearranged
+      * here. More about the transformation matrices in
+      * <a href="http://www.w3.org/TR/SVG/coords.html#TransformAttribute">this section</a>
+      * of the SVG documentation.
+      *
+      * @param {String} str text of the matrix param.
+      *
+      * @return {PMatrix2D} a PMatrix2D
+      */
       parseMatrix: function(str) {
         this.checkMatrix(2);
         var pieces = [];
@@ -2827,11 +2923,11 @@
         return this.matrix;
       },
       /**
-       * @member PShapeSVG
-       * The parseChildren() function parses the specified XMLElement
-       *
-       * @param {XMLElement}element the XMLElement to parse
-       */
+      * @member PShapeSVG
+      * The parseChildren() function parses the specified XMLElement
+      *
+      * @param {XMLElement}element the XMLElement to parse
+      */
       parseChildren:function(element) {
         var newelement = element.getChildren();
         var children   = new p.PShape();
@@ -2844,22 +2940,22 @@
         this.children.push(children);
       },
       /**
-       * @member PShapeSVG
-       * The getName() function returns the name 
-       *
-       * @return {String} the name
-       */
+      * @member PShapeSVG
+      * The getName() function returns the name 
+      *
+      * @return {String} the name
+      */
       getName: function() {
         return this.name;
       },
       /**
-       * @member PShapeSVG
-       * The parseChild() function parses a child XML element.
-       * 
-       * @param {XMLElement} elem the element to parse
-       *
-       * @return {PShape} the newly created PShape
-       */
+      * @member PShapeSVG
+      * The parseChild() function parses a child XML element.
+      * 
+      * @param {XMLElement} elem the element to parse
+      *
+      * @return {PShape} the newly created PShape
+      */
       parseChild: function( elem ) {
         var name = elem.getName();
         var shape;
@@ -2922,11 +3018,11 @@
         return shape;
       },
       /**
-       * @member PShapeSVG
-       * The parsePath() function parses the <path> element of the svg file
-       * A path is defined by including a ‘path’ element which contains a d="(path data)" attribute, where the ‘d’ attribute contains 
-       * the moveto, line, curve (both cubic and quadratic Béziers), arc and closepath instructions.
-       **/
+      * @member PShapeSVG
+      * The parsePath() function parses the <path> element of the svg file
+      * A path is defined by including a ‘path’ element which contains a d="(path data)" attribute, where the ‘d’ attribute contains 
+      * the moveto, line, curve (both cubic and quadratic Béziers), arc and closepath instructions.
+      **/
       parsePath: function() {
         this.family = PConstants.PATH;
         this.kind = 0;
@@ -3021,6 +3117,8 @@
                 break;
               case 109:  // m - move to (relative)
                 if (tmpArray.length >= 2 && tmpArray.length % 2 === 0) { // need one+ pairs of co-ordinates
+                  cx += tmpArray[0];
+                  cy += tmpArray[1];
                   this.parsePathMoveto(cx,cy);
                   if (tmpArray.length > 2) {
                     for (j = 2; j < tmpArray.length; j+=2) {
@@ -3252,11 +3350,11 @@
         }
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parsePath() helper function
-       * 
-       * @see PShapeSVG#parsePath
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parsePath() helper function
+      * 
+      * @see PShapeSVG#parsePath
+      */
       parsePathQuadto: function(x1, y1, cx, cy, x2, y2) {
         if (this.vertices.length > 0) {
           this.parsePathCode(PConstants.BEZIER_VERTEX);
@@ -3269,11 +3367,11 @@
         }
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parsePath() helper function
-       * 
-       * @see PShapeSVG#parsePath
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parsePath() helper function
+      * 
+      * @see PShapeSVG#parsePath
+      */
       parsePathCurveto : function(x1,  y1, x2, y2, x3, y3) {
         if (this.vertices.length > 0) {
           this.parsePathCode(PConstants.BEZIER_VERTEX );
@@ -3285,11 +3383,11 @@
         }
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parsePath() helper function
-       * 
-       * @see PShapeSVG#parsePath
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parsePath() helper function
+      * 
+      * @see PShapeSVG#parsePath
+      */
       parsePathLineto: function(px, py) {
         if (this.vertices.length > 0) {
           this.parsePathCode(PConstants.VERTEX);
@@ -3301,11 +3399,11 @@
         }
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parsePath() helper function
-       * 
-       * @see PShapeSVG#parsePath
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parsePath() helper function
+      * 
+      * @see PShapeSVG#parsePath
+      */
       parsePathMoveto: function(px, py) {
         if (this.vertices.length > 0) {
           this.parsePathCode(PConstants.BREAK);
@@ -3316,11 +3414,11 @@
         this.vertices[this.vertices.length-1]["moveTo"] = true;
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parsePath() helper function
-       * 
-       * @see PShapeSVG#parsePath
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parsePath() helper function
+      * 
+      * @see PShapeSVG#parsePath
+      */
       parsePathVertex: function(x,  y) {
         var verts = [];
         verts[0]  = x;
@@ -3328,20 +3426,20 @@
         this.vertices.push(verts);
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parsePath() helper function
-       * 
-       * @see PShapeSVG#parsePath
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parsePath() helper function
+      * 
+      * @see PShapeSVG#parsePath
+      */
       parsePathCode: function(what) {
         this.vertexCodes.push(what);
       },
       /**
-       * @member PShapeSVG
-       * The parsePoly() function parses a polyline or polygon from an SVG file.
-       *
-       * @param {boolean}val true if shape is closed (polygon), false if not (polyline)
-       */
+      * @member PShapeSVG
+      * The parsePoly() function parses a polyline or polygon from an SVG file.
+      *
+      * @param {boolean}val true if shape is closed (polygon), false if not (polyline)
+      */
       parsePoly: function(val) {
         this.family    = PConstants.PATH;
         this.close     = val;
@@ -3362,9 +3460,9 @@
         }
       },
       /**
-       * @member PShapeSVG
-       * The parseRect() function parses a rect from an SVG file.
-       */
+      * @member PShapeSVG
+      * The parseRect() function parses a rect from an SVG file.
+      */
       parseRect: function() {
         this.kind      = PConstants.RECT;
         this.family    = PConstants.PRIMITIVE;
@@ -3373,28 +3471,37 @@
         this.params[1] = this.element.getFloatAttribute("y");
         this.params[2] = this.element.getFloatAttribute("width");
         this.params[3] = this.element.getFloatAttribute("height");
+        if (this.params[2] < 0 || this.params[3] < 0) {
+          throw("svg error: negative width or height found while parsing <rect>"); 
+        }
 
       },
       /**
-       * @member PShapeSVG
-       * The parseEllipse() function handles parsing ellipse and circle tags.
-       *
-       * @param {boolean}val true if this is a circle and not an ellipse
-       */
+      * @member PShapeSVG
+      * The parseEllipse() function handles parsing ellipse and circle tags.
+      *
+      * @param {boolean}val true if this is a circle and not an ellipse
+      */
       parseEllipse: function(val) {
         this.kind   = PConstants.ELLIPSE;
         this.family = PConstants.PRIMITIVE;
         this.params = [];
 
-        this.params[0] = this.element.getFloatAttribute("cx");
-        this.params[1] = this.element.getFloatAttribute("cy");
+        this.params[0] = this.element.getFloatAttribute("cx") | 0;
+        this.params[1] = this.element.getFloatAttribute("cy") | 0;
 
         var rx, ry;
-        if (val) {
+        if (val) { //this is a circle
           rx = ry = this.element.getFloatAttribute("r");
+          if (rx < 0) {
+            throw("svg error: negative radius found while parsing <circle>");
+          }
         } else {
           rx = this.element.getFloatAttribute("rx");
           ry = this.element.getFloatAttribute("ry");
+          if (rx < 0 || ry < 0) {
+            throw("svg error: negative x-axis radius or y-axis radius found while parsing <ellipse>");
+          }
         }
         this.params[0] -= rx;
         this.params[1] -= ry;
@@ -3403,11 +3510,11 @@
         this.params[3] = ry*2;
       },
       /**
-       * @member PShapeSVG
-       * The parseLine() function handles parsing line tags.
-       *
-       * @param {boolean}val true if this is a circle and not an ellipse
-       */
+      * @member PShapeSVG
+      * The parseLine() function handles parsing line tags.
+      *
+      * @param {boolean}val true if this is a circle and not an ellipse
+      */
       parseLine: function() {
         this.kind = PConstants.LINE;
         this.family = PConstants.PRIMITIVE;
@@ -3418,11 +3525,11 @@
         this.params[3] = this.element.getFloatAttribute("y2");
       },
       /**
-       * @member PShapeSVG
-       * The parseColors() function handles parsing the opacity, strijem stroke-width, stroke-linejoin,stroke-linecap, fill, and style attributes 
-       *
-       * @param {XMLElement}element the element of which attributes to parse
-       */
+      * @member PShapeSVG
+      * The parseColors() function handles parsing the opacity, strijem stroke-width, stroke-linejoin,stroke-linecap, fill, and style attributes 
+      *
+      * @param {XMLElement}element the element of which attributes to parse
+      */
       parseColors: function(element) {
         if (element.hasAttribute("opacity")) {
           this.setOpacity(element.getAttribute("opacity"));
@@ -3482,32 +3589,36 @@
         }
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parseColors() helper function
-       * 
-       * @param {String} opacityText the value of fillOpacity 
-       *   
-       * @see PShapeSVG#parseColors
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parseColors() helper function
+      * 
+      * @param {String} opacityText the value of fillOpacity 
+      *   
+      * @see PShapeSVG#parseColors
+      */
       setFillOpacity: function(opacityText) {
         this.fillOpacity = parseFloat(opacityText);
         this.fillColor   = this.fillOpacity * 255  << 24 | this.fillColor & 0xFFFFFF;
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parseColors() helper function
-       * 
-       * @param {String} fillText the value of fill 
-       *  
-       * @see PShapeSVG#parseColors
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parseColors() helper function
+      * 
+      * @param {String} fillText the value of fill 
+      *  
+      * @see PShapeSVG#parseColors
+      */
       setFill: function (fillText) {
         var opacityMask = this.fillColor & 0xFF000000;
         if (fillText === "none") {
           this.fill = false;
         } else if (fillText.indexOf("#") === 0) {
           this.fill      = true;
-          this.fillColor = opacityMask | (parseInt(fillText.substring(1), 16 )) & 0xFFFFFF;
+          if (fillText.length === 4) {
+            // convert #00F to #0000FF
+            fillText = fillText.replace(/#(.)(.)(.)/,"#$1$1$2$2$3$3");
+          }
+          this.fillColor = opacityMask | (parseInt(fillText.substring(1), 16)) & 0xFFFFFF;
         } else if (fillText.indexOf("rgb") === 0) {
           this.fill      = true;
           this.fillColor = opacityMask | this.parseRGB(fillText);
@@ -3529,33 +3640,37 @@
         }
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parseColors() helper function
-       * 
-       * @param {String} opacity the value of opacity 
-       *   
-       * @see PShapeSVG#parseColors
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parseColors() helper function
+      * 
+      * @param {String} opacity the value of opacity 
+      *   
+      * @see PShapeSVG#parseColors
+      */
       setOpacity: function(opacity) {
         this.strokeColor = parseFloat(opacity) * 255 << 24 | this.strokeColor & 0xFFFFFF;
         this.fillColor   = parseFloat(opacity) * 255 << 24 | this.fillColor & 0xFFFFFF;
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parseColors() helper function
-       * 
-       * @param {String} strokeText the value to set stroke to 
-       *  
-       * @see PShapeSVG#parseColors
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parseColors() helper function
+      * 
+      * @param {String} strokeText the value to set stroke to 
+      *  
+      * @see PShapeSVG#parseColors
+      */
       setStroke: function(strokeText) {
         var opacityMask = this.strokeColor & 0xFF000000;
         if (strokeText === "none") {
           this.stroke = false;
         } else if (strokeText.charAt( 0 ) === "#") {
           this.stroke      = true;
-          this.strokeColor = opacityMask | (parseInt( strokeText.substring( 1 ), 16 )) & 0xFFFFFF;
-        } else if (strokeText.indexOf( "rgb" ) === 0 ) {
+          if (strokeText.length === 4) {
+            // convert #00F to #0000FF
+            strokeText = strokeText.replace(/#(.)(.)(.)/,"#$1$1$2$2$3$3");
+          }
+          this.strokeColor = opacityMask | (parseInt( strokeText.substring(1), 16)) & 0xFFFFFF;
+         } else if (strokeText.indexOf( "rgb" ) === 0 ) {
           this.stroke = true;
           this.strokeColor = opacityMask | this.parseRGB(strokeText);
         } else if (strokeText.indexOf( "url(#" ) === 0) {
@@ -3575,24 +3690,24 @@
         }
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parseColors() helper function
-       * 
-       * @param {String} weight the value to set strokeWeight to 
-       *  
-       * @see PShapeSVG#parseColors
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parseColors() helper function
+      * 
+      * @param {String} weight the value to set strokeWeight to 
+      *  
+      * @see PShapeSVG#parseColors
+      */
       setStrokeWeight: function(weight) {
         this.strokeWeight = this.parseUnitSize(weight);
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parseColors() helper function
-       * 
-       * @param {String} linejoin the value to set strokeJoin to 
-       * 
-       * @see PShapeSVG#parseColors
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parseColors() helper function
+      * 
+      * @param {String} linejoin the value to set strokeJoin to 
+      * 
+      * @see PShapeSVG#parseColors
+      */
       setStrokeJoin: function(linejoin) {
         if (linejoin === "miter") {
           this.strokeJoin = PConstants.MITER;
@@ -3605,13 +3720,13 @@
         }
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parseColors() helper function
-       * 
-       * @param {String} linecap the value to set strokeCap to 
-       *
-       * @see PShapeSVG#parseColors
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parseColors() helper function
+      * 
+      * @param {String} linecap the value to set strokeCap to 
+      *
+      * @see PShapeSVG#parseColors
+      */
       setStrokeCap: function (linecap) {
         if (linecap === "butt") {
           this.strokeCap = PConstants.SQUARE;
@@ -3624,43 +3739,43 @@
         }
       },
       /**
-       * @member PShapeSVG
-       * PShapeSVG.parseColors() helper function
-       * 
-       * @param {String} opacityText the value to set stroke opacity to 
-       *
-       * @see PShapeSVG#parseColors
-       */
+      * @member PShapeSVG
+      * PShapeSVG.parseColors() helper function
+      * 
+      * @param {String} opacityText the value to set stroke opacity to 
+      *
+      * @see PShapeSVG#parseColors
+      */
       setStrokeOpacity: function (opacityText) {
         this.strokeOpacity = parseFloat(opacityText);
         this.strokeColor   = this.strokeOpacity * 255 << 24 | this.strokeColor & 0xFFFFFF;
       },
       /**
-       * @member PShapeSVG
-       * The parseRGB() function parses an rbg() color string and returns a color int
-       *
-       * @param {String} color the color to parse in rbg() format
-       *
-       * @return {int} the equivalent color int
-       */
+      * @member PShapeSVG
+      * The parseRGB() function parses an rbg() color string and returns a color int
+      *
+      * @param {String} color the color to parse in rbg() format
+      *
+      * @return {int} the equivalent color int
+      */
       parseRGB: function(color) {
         var sub    = color.substring(color.indexOf('(') + 1, color.indexOf(')'));
         var values = sub.split(", ");
         return (values[0] << 16) | (values[1] << 8) | (values[2]);
       },
       /**
-       * @member PShapeSVG
-       * The parseUnitSize() function parse a size that may have a suffix for its units.
-       * Ignoring cases where this could also be a percentage.
-       * The <A HREF="http://www.w3.org/TR/SVG/coords.html#Units">units</A> spec:
-       * <UL>
-       * <LI>"1pt" equals "1.25px" (and therefore 1.25 user units)
-       * <LI>"1pc" equals "15px" (and therefore 15 user units)
-       * <LI>"1mm" would be "3.543307px" (3.543307 user units)
-       * <LI>"1cm" equals "35.43307px" (and therefore 35.43307 user units)
-       * <LI>"1in" equals "90px" (and therefore 90 user units)
-       * </UL>
-       */
+      * @member PShapeSVG
+      * The parseUnitSize() function parse a size that may have a suffix for its units.
+      * Ignoring cases where this could also be a percentage.
+      * The <A HREF="http://www.w3.org/TR/SVG/coords.html#Units">units</A> spec:
+      * <UL>
+      * <LI>"1pt" equals "1.25px" (and therefore 1.25 user units)
+      * <LI>"1pc" equals "15px" (and therefore 15 user units)
+      * <LI>"1mm" would be "3.543307px" (3.543307 user units)
+      * <LI>"1cm" equals "35.43307px" (and therefore 35.43307 user units)
+      * <LI>"1in" equals "90px" (and therefore 90 user units)
+      * </UL>
+      */
       parseUnitSize: function (text) {
         var len = text.length - 2;
         if (len < 0) { return text; }
@@ -3682,31 +3797,31 @@
       }
     };
     /**
-     * The shape() function displays shapes to the screen. 
-     * Processing currently works with SVG shapes only.
-     * The <b>shape</b> parameter specifies the shape to display and the <b>x</b>
-     * and <b>y</b> parameters define the location of the shape from its
-     * upper-left corner.
-     * The shape is displayed at its original size unless the <b>width</b>
-     * and <b>height</b> parameters specify a different size.
-     * The <b>shapeMode()</b> function changes the way the parameters work.
-     * A call to <b>shapeMode(CORNERS)</b>, for example, will change the width
-     * and height parameters to define the x and y values of the opposite corner
-     * of the shape.
-     * <br><br>
-     * Note complex shapes may draw awkwardly with P2D, P3D, and OPENGL. Those
-     * renderers do not yet support shapes that have holes or complicated breaks.
-     *
-     * @param {PShape} shape       the shape to display
-     * @param {int|float} x        x-coordinate of the shape
-     * @param {int|float} y        y-coordinate of the shape
-     * @param {int|float} width    width to display the shape
-     * @param {int|float} height   height to display the shape
-     *
-     * @see PShape
-     * @see loadShape()
-     * @see shapeMode()
-     */
+    * The shape() function displays shapes to the screen. 
+    * Processing currently works with SVG shapes only.
+    * The <b>shape</b> parameter specifies the shape to display and the <b>x</b>
+    * and <b>y</b> parameters define the location of the shape from its
+    * upper-left corner.
+    * The shape is displayed at its original size unless the <b>width</b>
+    * and <b>height</b> parameters specify a different size.
+    * The <b>shapeMode()</b> function changes the way the parameters work.
+    * A call to <b>shapeMode(CORNERS)</b>, for example, will change the width
+    * and height parameters to define the x and y values of the opposite corner
+    * of the shape.
+    * <br><br>
+    * Note complex shapes may draw awkwardly with P2D, P3D, and OPENGL. Those
+    * renderers do not yet support shapes that have holes or complicated breaks.
+    *
+    * @param {PShape} shape       the shape to display
+    * @param {int|float} x        x-coordinate of the shape
+    * @param {int|float} y        y-coordinate of the shape
+    * @param {int|float} width    width to display the shape
+    * @param {int|float} height   height to display the shape
+    *
+    * @see PShape
+    * @see loadShape()
+    * @see shapeMode()
+    */
     p.shape = function(shape, x, y, width, height) {
       if (arguments.length >= 1 && arguments[0] !== null) {
         if (shape.isVisible()) {
@@ -3746,39 +3861,39 @@
     };
     
     /**
-     * The shapeMode() function modifies the location from which shapes draw.
-     * The default mode is <b>shapeMode(CORNER)</b>, which specifies the
-     * location to be the upper left corner of the shape and uses the third
-     * and fourth parameters of <b>shape()</b> to specify the width and height.
-     * The syntax <b>shapeMode(CORNERS)</b> uses the first and second parameters
-     * of <b>shape()</b> to set the location of one corner and uses the third
-     * and fourth parameters to set the opposite corner.
-     * The syntax <b>shapeMode(CENTER)</b> draws the shape from its center point
-     * and uses the third and forth parameters of <b>shape()</b> to specify the
-     * width and height.
-     * The parameter must be written in "ALL CAPS" because Processing syntax
-     * is case sensitive.
-     *
-     * @param {int} mode One of CORNER, CORNERS, CENTER
-     *
-     * @see shape()
-     * @see rectMode()
+    * The shapeMode() function modifies the location from which shapes draw.
+    * The default mode is <b>shapeMode(CORNER)</b>, which specifies the
+    * location to be the upper left corner of the shape and uses the third
+    * and fourth parameters of <b>shape()</b> to specify the width and height.
+    * The syntax <b>shapeMode(CORNERS)</b> uses the first and second parameters
+    * of <b>shape()</b> to set the location of one corner and uses the third
+    * and fourth parameters to set the opposite corner.
+    * The syntax <b>shapeMode(CENTER)</b> draws the shape from its center point
+    * and uses the third and forth parameters of <b>shape()</b> to specify the
+    * width and height.
+    * The parameter must be written in "ALL CAPS" because Processing syntax
+    * is case sensitive.
+    *
+    * @param {int} mode One of CORNER, CORNERS, CENTER
+    *
+    * @see shape()
+    * @see rectMode()
      */
     p.shapeMode = function (mode) {
       curShapeMode = mode;
     };
     
     /**
-     * The loadShape() function loads vector shapes into a variable of type PShape. Currently, only SVG files may be loaded. 
-     * In most cases, <b>loadShape()</b> should be used inside <b>setup()</b> because loading shapes inside <b>draw()</b> will reduce the speed of a sketch. 
-     *
-     * @param {String} filename     an SVG file
-     *
-     * @return {PShape} a object of type PShape or null 
-     * @see PShape
-     * @see PApplet#shape()
-     * @see PApplet#shapeMode()
-     */  
+    * The loadShape() function loads vector shapes into a variable of type PShape. Currently, only SVG files may be loaded. 
+    * In most cases, <b>loadShape()</b> should be used inside <b>setup()</b> because loading shapes inside <b>draw()</b> will reduce the speed of a sketch. 
+    *
+    * @param {String} filename     an SVG file
+    *
+    * @return {PShape} a object of type PShape or null 
+    * @see PShape
+    * @see PApplet#shape()
+    * @see PApplet#shapeMode()
+    */  
     p.loadShape = function (filename) {
       if (arguments.length === 1) {
         if (filename.indexOf(".svg") > -1) {
@@ -3789,16 +3904,16 @@
     };
 
     /**
-     * XMLAttribute is an attribute of a XML element. This is an internal class
-     *
-     * @param {String} fname     the full name of the attribute
-     * @param {String} n         the short name of the attribute
-     * @param {String} namespace the namespace URI of the attribute
-     * @param {String} v         the value of the attribute
-     * @param {String }t         the type of the attribute
-     *
-     * @see XMLElement
-     */  
+    * XMLAttribute is an attribute of a XML element. This is an internal class
+    *
+    * @param {String} fname     the full name of the attribute
+    * @param {String} n         the short name of the attribute
+    * @param {String} namespace the namespace URI of the attribute
+    * @param {String} v         the value of the attribute
+    * @param {String }t         the type of the attribute
+    *
+    * @see XMLElement
+    */  
     var XMLAttribute = function(fname, n, nameSpace, v, t){
       this.fullName = fname || "";
       this.name = n || "";
@@ -3807,76 +3922,76 @@
       this.type = t;
     };
     /**
-     * XMLAttribute methods
-     */ 
+    * XMLAttribute methods
+    */ 
     XMLAttribute.prototype = {
       /**
-       * @member XMLAttribute
-       * The getName() function returns the short name of the attribute
-       *
-       * @return {String} the short name of the attribute
-       */ 
+      * @member XMLAttribute
+      * The getName() function returns the short name of the attribute
+      *
+      * @return {String} the short name of the attribute
+      */ 
       getName: function() {
         return this.name;
       },
       /**
-       * @member XMLAttribute
-       * The getFullName() function returns the full name of the attribute
-       *
-       * @return {String} the full name of the attribute
-       */ 
+      * @member XMLAttribute
+      * The getFullName() function returns the full name of the attribute
+      *
+      * @return {String} the full name of the attribute
+      */ 
       getFullName: function() {
         return this.fullName;
       },
       /**
-       * @member XMLAttribute
-       * The getNamespace() function returns the namespace of the attribute
-       *
-       * @return {String} the namespace of the attribute
-       */ 
+      * @member XMLAttribute
+      * The getNamespace() function returns the namespace of the attribute
+      *
+      * @return {String} the namespace of the attribute
+      */ 
       getNamespace: function() {
         return this.namespace;
       },
       /**
-       * @member XMLAttribute
-       * The getValue() function returns the value of the attribute
-       *
-       * @return {String} the value of the attribute
-       */ 
+      * @member XMLAttribute
+      * The getValue() function returns the value of the attribute
+      *
+      * @return {String} the value of the attribute
+      */ 
       getValue: function() {
         return this.value;
       },
       /**
-       * @member XMLAttribute
-       * The getValue() function returns the type of the attribute
-       *
-       * @return {String} the type of the attribute
-       */ 
+      * @member XMLAttribute
+      * The getValue() function returns the type of the attribute
+      *
+      * @return {String} the type of the attribute
+      */ 
       getType: function() {
         return this.type;
       },
       /**
-       * @member XMLAttribute
-       * The setValue() function sets the value of the attribute
-       *
-       * @param {String} newval the new value
-       */ 
+      * @member XMLAttribute
+      * The setValue() function sets the value of the attribute
+      *
+      * @param {String} newval the new value
+      */ 
       setValue: function(newval) {
         this.value = newval;
       }
     };
 
     /**
-     * XMLElement is a representation of an XML object. The object is able to parse XML code
-     *
-     * @param {PApplet} parent   typically use "this"
-     * @param {String} filename  name of the XML/SVG file to load
-     * @param {String} xml       the xml/svg string 
-     * @param {String} fullname  the full name of the element
-     * @param {String} namespace the namespace  of the URI
-     * @param {String} systemID  the system ID of the XML data where the element starts
-     * @param {Integer }lineNr   the line in the XML data where the element starts
-     */  
+    * XMLElement is a representation of an XML object. The object is able to parse XML code
+    *
+    * @param {PApplet} parent   typically use "this"
+    * @param {String} filename  name of the XML/SVG file to load
+    * @param {String} xml       the xml/svg string 
+    * @param {String} fullname  the full name of the element
+    * @param {String} namespace the namespace  of the URI
+    * @param {String} systemID  the system ID of the XML data where the element starts
+    * @param {Integer }lineNr   the line in the XML data where the element starts
+    */  
     var XMLElement = p.XMLElement = function() {
       if (arguments.length === 4) {
         this.attributes = [];
@@ -3937,22 +4052,22 @@
       return this;
     };
     /**
-     * XMLElement methods
-     * missing: enumerateAttributeNames(), enumerateChildren(),
-     * NOTE: parse does not work when a url is passed in
-     */
+    * XMLElement methods
+    * missing: enumerateAttributeNames(), enumerateChildren(),
+    * NOTE: parse does not work when a url is passed in
+    */
     XMLElement.prototype = {
       /**
-       * @member XMLElement
-       * The parse() function retrieves the file via ajax() and uses DOMParser() parseFromString method to make an XML document
-       * @addon
-       *
-       * @param {String} filename name of the XML/SVG file to load
-       *
-       * @throws ExceptionType Error loading document
-       *
-       * @see XMLElement#parseChildrenRecursive
-       */
+      * @member XMLElement
+      * The parse() function retrieves the file via ajax() and uses DOMParser() parseFromString method to make an XML document
+      * @addon
+      *
+      * @param {String} filename name of the XML/SVG file to load
+      *
+      * @throws ExceptionType Error loading document
+      *
+      * @see XMLElement#parseChildrenRecursive
+      */
       parse: function(filename) {
         var xmlDoc;
         try {
@@ -3972,14 +4087,14 @@
         }
       },
       /**
-       * @member XMLElement
-       * The createElement() function Creates an empty element
-       * 
-       * @param {String} fullName   the full name of the element
-       * @param {String} namespace  the namespace URI
-       * @param {String} systemID   the system ID of the XML data where the element starts
-       * @param {int} lineNr    the line in the XML data where the element starts
-       */
+      * @member XMLElement
+      * The createElement() function Creates an empty element
+      * 
+      * @param {String} fullName   the full name of the element
+      * @param {String} namespace  the namespace URI
+      * @param {String} systemID   the system ID of the XML data where the element starts
+      * @param {int} lineNr    the line in the XML data where the element starts
+      */
       createElement: function () {
         if (arguments.length === 2) {
           return new XMLElement(arguments[0], arguments[1], null, null);
@@ -3987,52 +4102,57 @@
           return new XMLElement(arguments[0], arguments[1], arguments[2], arguments[3]);
         }
       },
+
       /**
-       * @member XMLElement
-       * The hasAttribute() function returns whether an attribute exists
-       *
-       * @param {String} name      name of the attribute
-       * @param {String} namespace the namespace URI of the attribute
-       *
-       * @return {boolean} true if the attribute exists
-       */
+      * @member XMLElement
+      * The hasAttribute() function returns whether an attribute exists
+      *
+      * @param {String} name      name of the attribute
+      * @param {String} namespace the namespace URI of the attribute
+      *
+      * @return {boolean} true if the attribute exists
+      */
       hasAttribute: function (name) {
-        return this.getAttribute(name) !== null;
-        //2 parameter call missing
+        if (arguments.length === 1) {
+          return this.getAttribute(name) !== null;
+        } else if (arguments.length === 2) {
+          return this.getAttribute(name,namespace) !== null;
+        }
       },
+
       /**
-       * @member XMLElement
-       * The createPCDataElement() function creates an element to be used for #PCDATA content
-       *
-       * @return {XMLElement} new XMLElement element
-       */
+      * @member XMLElement
+      * The createPCDataElement() function creates an element to be used for #PCDATA content
+      *
+      * @return {XMLElement} new XMLElement element
+      */
       createPCDataElement: function () {
         return new XMLElement();
       },
       /**
-       * @member XMLElement
-       * The equals() function checks to see if the element being passed in equals another element
-       *
-       * @param {Object} rawElement the element to compare to
-       *
-       * @return {boolean} true if the element equals another element
-       */
+      * @member XMLElement
+      * The equals() function checks to see if the element being passed in equals another element
+      *
+      * @param {Object} rawElement the element to compare to
+      *
+      * @return {boolean} true if the element equals another element
+      */
       equals: function(object){
         if (typeof object === "Object") {
           return this.equalsXMLElement(object);
         }
       },
       /**
-       * @member XMLElement
-       * The equalsXMLElement() function checks to see if the XMLElement being passed in equals another XMLElement
-       *
-       * @param {XMLElement} rawElement the element to compare to
-       *
-       * @return {boolean} true if the element equals another element
-       */
+      * @member XMLElement
+      * The equalsXMLElement() function checks to see if the XMLElement being passed in equals another XMLElement
+      *
+      * @param {XMLElement} rawElement the element to compare to
+      *
+      * @return {boolean} true if the element equals another element
+      */
       equalsXMLElement: function (object) {
         if (object instanceof XMLElement) {
-          if (this.name !== object.getLocalName) { return false; }
+          if (this.name !== object.getLocalName()) { return false; }
           if (this.attributes.length !== object.getAttributeCount()) { return false; }
           for (var i = 0; i < this.attributes.length; i++){
             if (! object.hasAttribute(this.attributes[i].getName(), this.attributes[i].getNamespace())) { return false; }
@@ -4050,24 +4170,24 @@
         }
       },
       /**
-       * @member XMLElement
-       * The getContent() function returns the content of an element. If there is no such content, null is returned
-       *
-       * @return {String} the (possibly null) content
-       */
+      * @member XMLElement
+      * The getContent() function returns the content of an element. If there is no such content, null is returned
+      *
+      * @return {String} the (possibly null) content
+      */
       getContent: function(){
          return this.content;
       },
       /**
-       * @member XMLElement
-       * The getAttribute() function returns the value of an attribute
-       *
-       * @param {String} name         the non-null full name of the attribute
-       * @param {String} namespace    the namespace URI, which may be null
-       * @param {String} defaultValue the default value of the attribute
-       *
-       * @return {String} the value, or defaultValue if the attribute does not exist
-       */
+      * @member XMLElement
+      * The getAttribute() function returns the value of an attribute
+      *
+      * @param {String} name         the non-null full name of the attribute
+      * @param {String} namespace    the namespace URI, which may be null
+      * @param {String} defaultValue the default value of the attribute
+      *
+      * @return {String} the value, or defaultValue if the attribute does not exist
+      */
       getAttribute: function (){
         var attribute;
         if( arguments.length === 2 ){
@@ -4084,19 +4204,26 @@
           } else {
             return null;
           }
+        } else if (arguments.length === 3) {
+          attribute = this.findAttribute(arguments[0],arguments[1]);
+          if (attribute) {
+            return attribute.getValue();
+          } else {
+            return arguments[2];
+          }
         }
       },
       /**
-       * @member XMLElement
-       * The getStringAttribute() function returns the string attribute of the element
-       * If the <b>defaultValue</b> parameter is used and the attribute doesn't exist, the <b>defaultValue</b> value is returned.
-       * When calling the function without the <b>defaultValue</b> parameter, if the attribute doesn't exist, the value 0 is returned.
-       *
-       * @param name         the name of the attribute
-       * @param defaultValue value returned if the attribute is not found
-       *
-       * @return {String} the value, or defaultValue if the attribute does not exist
-       */
+      * @member XMLElement
+      * The getStringAttribute() function returns the string attribute of the element
+      * If the <b>defaultValue</b> parameter is used and the attribute doesn't exist, the <b>defaultValue</b> value is returned.
+      * When calling the function without the <b>defaultValue</b> parameter, if the attribute doesn't exist, the value 0 is returned.
+      *
+      * @param name         the name of the attribute
+      * @param defaultValue value returned if the attribute is not found
+      *
+      * @return {String} the value, or defaultValue if the attribute does not exist
+      */
       getStringAttribute: function() {
         if (arguments.length === 1) {
           return this.getAttribute(arguments[0]);
@@ -4107,16 +4234,16 @@
         }
       },
       /**
-       * @member XMLElement
-       * The getFloatAttribute() function returns the float attribute of the element.
-       * If the <b>defaultValue</b> parameter is used and the attribute doesn't exist, the <b>defaultValue</b> value is returned.
-       * When calling the function without the <b>defaultValue</b> parameter, if the attribute doesn't exist, the value 0 is returned.
-       *
-       * @param name         the name of the attribute
-       * @param defaultValue value returned if the attribute is not found
-       *
-       * @return {float} the value, or defaultValue if the attribute does not exist
-       */
+      * @member XMLElement
+      * The getFloatAttribute() function returns the float attribute of the element.
+      * If the <b>defaultValue</b> parameter is used and the attribute doesn't exist, the <b>defaultValue</b> value is returned.
+      * When calling the function without the <b>defaultValue</b> parameter, if the attribute doesn't exist, the value 0 is returned.
+      *
+      * @param name         the name of the attribute
+      * @param defaultValue value returned if the attribute is not found
+      *
+      * @return {float} the value, or defaultValue if the attribute does not exist
+      */
       getFloatAttribute: function() {
         if (arguments.length === 1 ) {
           return parseFloat(this.getAttribute(arguments[0], 0));
@@ -4127,16 +4254,16 @@
         }
       },
       /**
-       * @member XMLElement
-       * The getIntAttribute() function returns the integer attribute of the element.
-       * If the <b>defaultValue</b> parameter is used and the attribute doesn't exist, the <b>defaultValue</b> value is returned.
-       * When calling the function without the <b>defaultValue</b> parameter, if the attribute doesn't exist, the value 0 is returned.
-       *
-       * @param name         the name of the attribute
-       * @param defaultValue value returned if the attribute is not found
-       *
-       * @return {int} the value, or defaultValue if the attribute does not exist
-       */
+      * @member XMLElement
+      * The getIntAttribute() function returns the integer attribute of the element.
+      * If the <b>defaultValue</b> parameter is used and the attribute doesn't exist, the <b>defaultValue</b> value is returned.
+      * When calling the function without the <b>defaultValue</b> parameter, if the attribute doesn't exist, the value 0 is returned.
+      *
+      * @param name         the name of the attribute
+      * @param defaultValue value returned if the attribute is not found
+      *
+      * @return {int} the value, or defaultValue if the attribute does not exist
+      */
       getIntAttribute: function () {
         if (arguments.length === 1) {
           return this.getAttribute( arguments[0], 0 );
@@ -4147,20 +4274,20 @@
         }
       },
       /**
-       * @member XMLElement
-       * The hasChildren() function returns whether the element has children.
-       *
-       * @return {boolean} true if the element has children.
-       */
+      * @member XMLElement
+      * The hasChildren() function returns whether the element has children.
+      *
+      * @return {boolean} true if the element has children.
+      */
       hasChildren: function () {
         return this.children.length > 0 ;
       },
       /**
-       * @member XMLElement
-       * The addChild() function adds a child element
-       *
-       * @param {XMLElement} child the non-null child to add.
-       */
+      * @member XMLElement
+      * The addChild() function adds a child element
+      *
+      * @param {XMLElement} child the non-null child to add.
+      */
       addChild: function (child) {
         if (child !== null) {
           child.parent = this;
@@ -4168,12 +4295,12 @@
         }
       },
       /**
-       * @member XMLElement
-       * The insertChild() function inserts a child element at the index provided
-       *
-       * @param {XMLElement} child  the non-null child to add.
-       * @param {int} index     where to put the child.
-       */
+      * @member XMLElement
+      * The insertChild() function inserts a child element at the index provided
+      *
+      * @param {XMLElement} child  the non-null child to add.
+      * @param {int} index     where to put the child.
+      */
       insertChild: function (child, index) {
         if (child) {
           if ((child.getLocalName() === null) && (! this.hasChildren())) {
@@ -4188,16 +4315,16 @@
         }
       },
       /**
-       * @member XMLElement
-       * The getChild() returns the child XMLElement as specified by the <b>index</b> parameter. 
-       * The value of the <b>index</b> parameter must be less than the total number of children to avoid going out of the array storing the child elements.
-       * When the <b>path</b> parameter is specified, then it will return all children that match that path. The path is a series of elements and sub-elements, separated by slashes.
-       *
-       * @param {int} index     where to put the child.
-       * @param {String} path       path to a particular element
-       *
-       * @return {XMLElement} the element
-       */
+      * @member XMLElement
+      * The getChild() returns the child XMLElement as specified by the <b>index</b> parameter. 
+      * The value of the <b>index</b> parameter must be less than the total number of children to avoid going out of the array storing the child elements.
+      * When the <b>path</b> parameter is specified, then it will return all children that match that path. The path is a series of elements and sub-elements, separated by slashes.
+      *
+      * @param {int} index     where to put the child.
+      * @param {String} path       path to a particular element
+      *
+      * @return {XMLElement} the element
+      */
       getChild: function (){
         if (typeof arguments[0]  === "number") {
           return this.children[arguments[0]];
@@ -4217,18 +4344,18 @@
         }
       },
       /**
-       * @member XMLElement
-       * The getChildren() returns all of the children as an XMLElement array.
-       * When the <b>path</b> parameter is specified, then it will return all children that match that path.
-       * The path is a series of elements and sub-elements, separated by slashes.
-       *
-       * @param {String} path       element name or path/to/element
-       *
-       * @return {XMLElement} array of child elements that match
-       *
-       * @see XMLElement#getChildCount()
-       * @see XMLElement#getChild()
-       */
+      * @member XMLElement
+      * The getChildren() returns all of the children as an XMLElement array.
+      * When the <b>path</b> parameter is specified, then it will return all children that match that path.
+      * The path is a series of elements and sub-elements, separated by slashes.
+      *
+      * @param {String} path       element name or path/to/element
+      *
+      * @return {XMLElement} array of child elements that match
+      *
+      * @see XMLElement#getChildCount()
+      * @see XMLElement#getChild()
+      */
       getChildren: function(){
         if (arguments.length === 1) {
           if (typeof arguments[0]  === "number") {
@@ -4252,26 +4379,26 @@
         }
       },
       /**
-       * @member XMLElement
-       * The getChildCount() returns the number of children for the element.
-       *
-       * @return {int} the count
-       *
-       * @see XMLElement#getChild()
-       * @see XMLElement#getChildren()
-       */
+      * @member XMLElement
+      * The getChildCount() returns the number of children for the element.
+      *
+      * @return {int} the count
+      *
+      * @see XMLElement#getChild()
+      * @see XMLElement#getChildren()
+      */
       getChildCount: function(){
         return this.children.length;
       },
       /**
-       * @member XMLElement
-       * Internal helper function for getChild().
-       *
-       * @param {String[]} items   result of splitting the query on slashes
-       * @param {int} offset   where in the items[] array we're currently looking
-       *
-       * @return {XMLElement} matching element or null if no match
-       */
+      * @member XMLElement
+      * Internal helper function for getChild().
+      *
+      * @param {String[]} items   result of splitting the query on slashes
+      * @param {int} offset   where in the items[] array we're currently looking
+      *
+      * @return {XMLElement} matching element or null if no match
+      */
       getChildRecursive: function (items, offset) {
         var kid, kidName;
         for(var i = 0; i < this.getChildCount(); i++) {
@@ -4289,14 +4416,14 @@
         return null;
       },
       /**
-       * @member XMLElement
-       * Internal helper function for getChildren().
-       *
-       * @param {String[]} items   result of splitting the query on slashes
-       * @param {int} offset   where in the items[] array we're currently looking
-       *
-       * @return {XMLElement[]} matching elements or empty array if no match
-       */
+      * @member XMLElement
+      * Internal helper function for getChildren().
+      *
+      * @param {String[]} items   result of splitting the query on slashes
+      * @param {int} offset   where in the items[] array we're currently looking
+      *
+      * @return {XMLElement[]} matching elements or empty array if no match
+      */
       getChildrenRecursive: function (items, offset) {
         if (offset === items.length-1) {
           return this.getChildren(items[offset]);
@@ -4309,16 +4436,16 @@
         return kidMatches;
       },
       /**
-       * @member XMLElement
-       * Internal helper function for parse().
-       * Loops through the 
-       * @addon
-       * 
-       * @param {XMLElement} parent                      the parent node
-       * @param {XML document childNodes} elementpath    the remaining nodes that need parsing
-       *
-       * @return {XMLElement} the new element and its children elements
-       */
+      * @member XMLElement
+      * Internal helper function for parse().
+      * Loops through the 
+      * @addon
+      * 
+      * @param {XMLElement} parent                      the parent node
+      * @param {XML document childNodes} elementpath    the remaining nodes that need parsing
+      *
+      * @return {XMLElement} the new element and its children elements
+      */
       parseChildrenRecursive: function (parent , elementpath){
         var xmlelement,
           xmlattribute,
@@ -4348,21 +4475,21 @@
         return xmlelement;
       },
       /**
-       * @member XMLElement
-       * The isLeaf() function returns whether the element is a leaf element.
-       *
-       * @return {boolean} true if the element has no children.
-       */
+      * @member XMLElement
+      * The isLeaf() function returns whether the element is a leaf element.
+      *
+      * @return {boolean} true if the element has no children.
+      */
       isLeaf: function(){
         return !this.hasChildren();
       },
       /**
-       * @member XMLElement
-       * The listChildren() function put the names of all children into an array. Same as looping through 
-       * each child and calling getName() on each XMLElement.
-       *
-       * @return {String[]} a list of element names.
-       */
+      * @member XMLElement
+      * The listChildren() function put the names of all children into an array. Same as looping through 
+      * each child and calling getName() on each XMLElement.
+      *
+      * @return {String[]} a list of element names.
+      */
       listChildren: function() {
         var arr = [];
         for (var i = 0; i < this.children.length; i++) {
@@ -4371,55 +4498,55 @@
         return arr;
       },
       /**
-       * @member XMLElement
-       * The removeAttribute() function removes an attribute
-       *
-       * @param {String} name        the non-null name of the attribute.
-       * @param {String} namespace   the namespace URI of the attribute, which may be null.
-       */
+      * @member XMLElement
+      * The removeAttribute() function removes an attribute
+      *
+      * @param {String} name        the non-null name of the attribute.
+      * @param {String} namespace   the namespace URI of the attribute, which may be null.
+      */
       removeAttribute: function (name , namespace) {
         this.namespace = namespace || "";
         for (var i = 0; i < this.attributes.length; i++){
           if (this.attributes[i].getName() === name && this.attributes[i].getNamespace() === this.namespace) {
-            this.attributes.splice(i, 0);
+            this.attributes.splice(i, 1);
           }
         }
       },
       /**
-       * @member XMLElement
-       * The removeChild() removes a child element.
-       *
-       * @param {XMLElement} child      the the non-null child to be renoved
-       */
+      * @member XMLElement
+      * The removeChild() removes a child element.
+      *
+      * @param {XMLElement} child      the the non-null child to be renoved
+      */
       removeChild: function(child) {
         if (child) {
           for (var i = 0; i < this.children.length; i++) {
             if (this.children[i].equalsXMLElement(child)) {
-              this.children.splice(i, 0);
+              this.children.splice(i, 1);
             }
           }
         }
       },
       /**
-       * @member XMLElement
-       * The removeChildAtIndex() removes the child located at a certain index
-       *
-       * @param {int} index      the index of the child, where the first child has index 0
-       */
+      * @member XMLElement
+      * The removeChildAtIndex() removes the child located at a certain index
+      *
+      * @param {int} index      the index of the child, where the first child has index 0
+      */
       removeChildAtIndex: function(index) {
         if (this.children.length > index) { //make sure its not outofbounds
-          this.children.splice(index, 0);
+          this.children.splice(index, 1);
         }
       },
       /**
-       * @member XMLElement
-       * The findAttribute() function searches an attribute
-       *
-       * @param {String} name        fullName the non-null full name of the attribute
-       * @param {String} namespace   the name space, which may be null
-       *
-       * @return {XMLAttribute} the attribute, or null if the attribute does not exist.
-       */
+      * @member XMLElement
+      * The findAttribute() function searches an attribute
+      *
+      * @param {String} name        fullName the non-null full name of the attribute
+      * @param {String} namespace   the name space, which may be null
+      *
+      * @return {XMLAttribute} the attribute, or null if the attribute does not exist.
+      */
       findAttribute: function (name, namespace) {
         this.namespace = namespace || "";
         for (var i = 0; i < this.attributes.length; i++ ) {
@@ -4429,12 +4556,12 @@
         }
       },
       /**
-       * @member XMLElement
-       * The setAttribute() function sets an attribute.
-       *
-       * @param {String} name        the non-null full name of the attribute
-       * @param {String} namespace   the non-null value of the attribute
-       */
+      * @member XMLElement
+      * The setAttribute() function sets an attribute.
+      *
+      * @param {String} name        the non-null full name of the attribute
+      * @param {String} namespace   the non-null value of the attribute
+      */
       setAttribute: function() {
         var attr;
         if (arguments.length === 3) {
@@ -4445,7 +4572,7 @@
             attr.setValue(arguments[2]);
           } else {
             attr = new XMLAttribute(arguments[0], name, arguments[1], arguments[2], "CDATA");
-            this.attributes.addElement(attr);
+            this.attributes.push(attr);
           }
         } else {
           attr = this.findAttribute(arguments[0]);
@@ -4453,28 +4580,28 @@
             attr.setValue(arguments[1]);
           } else {
             attr = new XMLAttribute(arguments[0], arguments[0], null, arguments[1], "CDATA");
-            this.attributes.addElement(attr);
+            this.attributes.push(attr);
           }
         }
       },
       /**
-       * @member XMLElement
-       * The setContent() function sets the #PCDATA content. It is an error to call this method with a
-       * non-null value if there are child objects.
-       *
-       * @param {String} content     the (possibly null) content
-       */
+      * @member XMLElement
+      * The setContent() function sets the #PCDATA content. It is an error to call this method with a
+      * non-null value if there are child objects.
+      *
+      * @param {String} content     the (possibly null) content
+      */
       setContent: function(content) {
         this.content = content;
       },
       /**
-       * @member XMLElement
-       * The setName() function sets the full name. This method also sets the short name and clears the
-       * namespace URI.
-       *
-       * @param {String} name        the non-null name
-       * @param {String} namespace   the namespace URI, which may be null.
-       */
+      * @member XMLElement
+      * The setName() function sets the full name. This method also sets the short name and clears the
+      * namespace URI.
+      *
+      * @param {String} name        the non-null name
+      * @param {String} namespace   the namespace URI, which may be null.
+      */
       setName: function() {
         if (arguments.length === 1) {
           this.name      = arguments[0];
@@ -4492,14 +4619,20 @@
         }
       },
       /**
-       * @member XMLElement
-       * The getName() function returns the full name (i.e. the name including an eventual namespace
-       * prefix) of the element.
-       *
-       * @return {String} the name, or null if the element only contains #PCDATA.
-       */
+      * @member XMLElement
+      * The getName() function returns the full name (i.e. the name including an eventual namespace
+      * prefix) of the element.
+      *
+      * @return {String} the name, or null if the element only contains #PCDATA.
+      */
       getName: function() {
         return this.fullName;
+      },
+      getLocalName: function() {
+        return this.name;
+      },
+      getAttributeCount: function() {
+        return this.attributes.length;
       }
     };
 
@@ -4508,10 +4641,10 @@
     // 2D Matrix
     ////////////////////////////////////////////////////////////////////////////
     /**
-     * Helper function for printMatrix(). Finds the largest scalar
-     * in the matrix, then number of digits left of the decimal.
-     * Call from PMatrix2D and PMatrix3D's print() function.
-     */
+    * Helper function for printMatrix(). Finds the largest scalar
+    * in the matrix, then number of digits left of the decimal.
+    * Call from PMatrix2D and PMatrix3D's print() function.
+    */
     var printMatrixHelper = function printMatrixHelper(elements) {
       var big = 0;
       for (var i = 0; i < elements.length; i++) {
@@ -4532,17 +4665,17 @@
       return digits;
     };
     /**
-     * PMatrix2D is a 3x2 affine matrix implementation. The constructor accepts another PMatrix2D or a list of six float elements. 
-     * If no parameters are provided the matrix is set to the identity matrix.
-     *
-     * @param {PMatrix2D} matrix  the initial matrix to set to
-     * @param {float} m00         the first element of the matrix
-     * @param {float} m01         the second element of the matrix
-     * @param {float} m02         the third element of the matrix
-     * @param {float} m10         the fourth element of the matrix
-     * @param {float} m11         the fifth element of the matrix
-     * @param {float} m12         the sixth element of the matrix
-     */
+    * PMatrix2D is a 3x2 affine matrix implementation. The constructor accepts another PMatrix2D or a list of six float elements. 
+    * If no parameters are provided the matrix is set to the identity matrix.
+    *
+    * @param {PMatrix2D} matrix  the initial matrix to set to
+    * @param {float} m00         the first element of the matrix
+    * @param {float} m01         the second element of the matrix
+    * @param {float} m02         the third element of the matrix
+    * @param {float} m10         the fourth element of the matrix
+    * @param {float} m11         the fifth element of the matrix
+    * @param {float} m12         the sixth element of the matrix
+    */
     var PMatrix2D = p.PMatrix2D = function() {
       if (arguments.length === 0) {
         this.reset();
@@ -4553,21 +4686,21 @@
       }
     };
     /**
-     * PMatrix2D methods
-     */
+    * PMatrix2D methods
+    */
     PMatrix2D.prototype = {
       /**
-       * @member PMatrix2D
-       * The set() function sets the matrix elements. The function accepts either another PMatrix2D, an array of elements, or a list of six floats. 
-       *
-       * @param {PMatrix2D} matrix    the matrix to set this matrix to 
-       * @param {float[]} elements    an array of elements to set this matrix to 
-       * @param {float} m00           the first element of the matrix
-       * @param {float} m01           the third element of the matrix
-       * @param {float} m10           the fourth element of the matrix
-       * @param {float} m11           the fith element of the matrix
-       * @param {float} m12           the sixth element of the matrix
-       */
+      * @member PMatrix2D
+      * The set() function sets the matrix elements. The function accepts either another PMatrix2D, an array of elements, or a list of six floats. 
+      *
+      * @param {PMatrix2D} matrix    the matrix to set this matrix to 
+      * @param {float[]} elements    an array of elements to set this matrix to 
+      * @param {float} m00           the first element of the matrix
+      * @param {float} m01           the third element of the matrix
+      * @param {float} m10           the fourth element of the matrix
+      * @param {float} m11           the fith element of the matrix
+      * @param {float} m12           the sixth element of the matrix
+      */
       set: function() {
         if (arguments.length === 6) {
           var a = arguments;
@@ -4580,64 +4713,64 @@
         }
       },
       /**
-       * @member PMatrix2D
-       * The get() function returns a copy of this PMatrix2D. 
-       *
-       * @return {PMatrix2D} a copy of this PMatrix2D 
-       */
+      * @member PMatrix2D
+      * The get() function returns a copy of this PMatrix2D. 
+      *
+      * @return {PMatrix2D} a copy of this PMatrix2D 
+      */
       get: function() {
         var outgoing = new PMatrix2D();
         outgoing.set(this.elements);
         return outgoing;
       },
       /**
-       * @member PMatrix2D
-       * The reset() function sets this PMatrix2D to the identity matrix. 
-       */
+      * @member PMatrix2D
+      * The reset() function sets this PMatrix2D to the identity matrix. 
+      */
       reset: function() {
         this.set([1, 0, 0, 0, 1, 0]);
       },
       /**
-       * @member PMatrix2D
-       * The array() function returns a copy of the element values. 
-       * @addon
-       *
-       * @return {float[]} returns a copy of the element values
-       */
+      * @member PMatrix2D
+      * The array() function returns a copy of the element values. 
+      * @addon
+      *
+      * @return {float[]} returns a copy of the element values
+      */
       array: function array() {
         return this.elements.slice();
       },
       /**
-       * @member PMatrix2D
-       * The translate() function translates this matrix by moving the current coordinates to the location specified by tx and ty.
-       *
-       * @param {float} tx  the x-axis coordinate to move to 
-       * @param {float} ty  the y-axis coordinate to move to 
-       */
+      * @member PMatrix2D
+      * The translate() function translates this matrix by moving the current coordinates to the location specified by tx and ty.
+      *
+      * @param {float} tx  the x-axis coordinate to move to 
+      * @param {float} ty  the y-axis coordinate to move to 
+      */
       translate: function(tx, ty) {
         this.elements[2] = tx * this.elements[0] + ty * this.elements[1] + this.elements[2];
         this.elements[5] = tx * this.elements[3] + ty * this.elements[4] + this.elements[5];
       },
-       /**
-       * @member PMatrix2D
-       * The transpose() function is not used in processingjs.
-       */
+      /**
+      * @member PMatrix2D
+      * The transpose() function is not used in processingjs.
+      */
       transpose: function() {
         // Does nothing in Processing.
       },
       /**
-       * @member PMatrix2D
-       * The mult() function multiplied this matrix. 
-       * If two array elements are passed in the function will multiply a two element vector against this matrix.
-       * If target is null or not length four, a new float array will be returned.
-       * The values for vec and target can be the same (though that's less efficient).
-       * If two PVectors are passed in the function multiply the x and y coordinates of a PVector against this matrix.
-       *
-       * @param {PVector} source, target  the PVectors used to multiply this matrix
-       * @param {float[]} source, target  the arrays used to multiply this matrix
-       *
-       * @return {PVector|float[]} returns a PVector or an array representing the new matrix
-       */
+      * @member PMatrix2D
+      * The mult() function multiplied this matrix. 
+      * If two array elements are passed in the function will multiply a two element vector against this matrix.
+      * If target is null or not length four, a new float array will be returned.
+      * The values for vec and target can be the same (though that's less efficient).
+      * If two PVectors are passed in the function multiply the x and y coordinates of a PVector against this matrix.
+      *
+      * @param {PVector} source, target  the PVectors used to multiply this matrix
+      * @param {float[]} source, target  the arrays used to multiply this matrix
+      *
+      * @return {PVector|float[]} returns a PVector or an array representing the new matrix
+      */
       mult: function(source, target) {
         var x, y;
         if (source instanceof PVector) {
@@ -4664,67 +4797,67 @@
         return target;
       },
       /**
-       * @member PMatrix2D
-       * The multX() function calculates the x component of a vector from a transformation. 
-       *
-       * @param {float} x the x component of the vector being transformed
-       * @param {float} y the y component of the vector being transformed
-       *
-       * @return {float} returnes the result of the calculation
-       */
+      * @member PMatrix2D
+      * The multX() function calculates the x component of a vector from a transformation. 
+      *
+      * @param {float} x the x component of the vector being transformed
+      * @param {float} y the y component of the vector being transformed
+      *
+      * @return {float} returnes the result of the calculation
+      */
       multX: function(x, y) {
         return (x * this.elements[0] + y * this.elements[1] + this.elements[2]);
       },
       /**
-       * @member PMatrix2D
-       * The multY() function calculates the y component of a vector from a transformation. 
-       *
-       * @param {float} x the x component of the vector being transformed
-       * @param {float} y the y component of the vector being transformed
-       *
-       * @return {float} returnes the result of the calculation
-       */
+      * @member PMatrix2D
+      * The multY() function calculates the y component of a vector from a transformation. 
+      *
+      * @param {float} x the x component of the vector being transformed
+      * @param {float} y the y component of the vector being transformed
+      *
+      * @return {float} returnes the result of the calculation
+      */
       multY: function(x, y) {
         return (x * this.elements[3] + y * this.elements[4] + this.elements[5]);
       }, 
       /**
-       * @member PMatrix2D
-       * The skewX() function skews the matrix along the x-axis the amount specified by the angle parameter.
-       * Angles should be specified in radians (values from 0 to PI*2) or converted to radians with the <b>radians()</b> function.
-       *
-       * @param {float} angle  angle of skew specified in radians
-       */
+      * @member PMatrix2D
+      * The skewX() function skews the matrix along the x-axis the amount specified by the angle parameter.
+      * Angles should be specified in radians (values from 0 to PI*2) or converted to radians with the <b>radians()</b> function.
+      *
+      * @param {float} angle  angle of skew specified in radians
+      */
       skewX: function(angle) {
         this.apply(1, 0, 1, angle, 0, 0);
       },
       /**
-       * @member PMatrix2D
-       * The skewY() function skews the matrix along the y-axis the amount specified by the angle parameter.
-       * Angles should be specified in radians (values from 0 to PI*2) or converted to radians with the <b>radians()</b> function.
-       *
-       * @param {float} angle  angle of skew specified in radians
-       */
+      * @member PMatrix2D
+      * The skewY() function skews the matrix along the y-axis the amount specified by the angle parameter.
+      * Angles should be specified in radians (values from 0 to PI*2) or converted to radians with the <b>radians()</b> function.
+      *
+      * @param {float} angle  angle of skew specified in radians
+      */
       skewY: function(angle) {
         this.apply(1, 0, 1,  0, angle, 0);
       },
       /**
-       * @member PMatrix2D
-       * The determinant() function calvculates the determinant of this matrix.
-       *
-       * @return {float} the determinant of the matrix
-       */
+      * @member PMatrix2D
+      * The determinant() function calvculates the determinant of this matrix.
+      *
+      * @return {float} the determinant of the matrix
+      */
       determinant: function() {
         return (this.elements[0] * this.elements[4] - this.elements[1] * this.elements[3]);
       },
       /**
-       * @member PMatrix2D
-       * The invert() function inverts this matrix
-       *
-       * @return {boolean} true if successful
-       */
+      * @member PMatrix2D
+      * The invert() function inverts this matrix
+      *
+      * @return {boolean} true if successful
+      */
       invert: function() {
         var d = this.determinant();
-        if ( Math.abs( d ) > PConstants.FLOAT_MIN ) {
+        if (Math.abs( d ) > PConstants.MIN_INT) {
           var old00 = this.elements[0];
           var old01 = this.elements[1];
           var old02 = this.elements[2];
@@ -4734,7 +4867,7 @@
           this.elements[0] =  old11 / d;
           this.elements[3] = -old10 / d;
           this.elements[1] = -old01 / d;
-          this.elements[1] =  old00 / d;
+          this.elements[4] =  old00 / d;
           this.elements[2] = (old01 * old12 - old11 * old02) / d;
           this.elements[5] = (old10 * old02 - old00 * old12) / d;
           return true;
@@ -4742,13 +4875,13 @@
         return false;
       },
       /**
-       * @member PMatrix2D
-       * The scale() function increases or decreases the size of a shape by expanding and contracting vertices. When only one parameter is specified scale will occur in all dimensions.
-       * This is equivalent to a two parameter call.
-       *
-       * @param {float} sx  the amount to scale on the x-axis
-       * @param {float} sy  the amount to scale on the y-axis
-       */
+      * @member PMatrix2D
+      * The scale() function increases or decreases the size of a shape by expanding and contracting vertices. When only one parameter is specified scale will occur in all dimensions.
+      * This is equivalent to a two parameter call.
+      *
+      * @param {float} sx  the amount to scale on the x-axis
+      * @param {float} sy  the amount to scale on the y-axis
+      */
       scale: function(sx, sy) {
         if (sx && !sy) {
           sy = sx;
@@ -4761,16 +4894,16 @@
         }
       },
       /**
-       * @member PMatrix2D
-       * The apply() function multiplies the current matrix by the one specified through the parameters. Note that either a PMatrix2D or a list of floats can be passed in. 
-       *
-       * @param {PMatrix2D} matrix    the matrix to apply this matrix to 
-       * @param {float} m00           the first element of the matrix
-       * @param {float} m01           the third element of the matrix
-       * @param {float} m10           the fourth element of the matrix
-       * @param {float} m11           the fith element of the matrix
-       * @param {float} m12           the sixth element of the matrix
-       */
+      * @member PMatrix2D
+      * The apply() function multiplies the current matrix by the one specified through the parameters. Note that either a PMatrix2D or a list of floats can be passed in. 
+      *
+      * @param {PMatrix2D} matrix    the matrix to apply this matrix to 
+      * @param {float} m00           the first element of the matrix
+      * @param {float} m01           the third element of the matrix
+      * @param {float} m10           the fourth element of the matrix
+      * @param {float} m11           the fith element of the matrix
+      * @param {float} m12           the sixth element of the matrix
+      */
       apply: function() {
         var source;
         if (arguments.length === 1 && arguments[0] instanceof PMatrix2D) {
@@ -4793,16 +4926,16 @@
         this.elements = result.slice();
       },
       /**
-       * @member PMatrix2D
-       * The preApply() function applies another matrix to the left of this one. Note that either a PMatrix2D or elements of a matrix can be passed in. 
-       *
-       * @param {PMatrix2D} matrix    the matrix to apply this matrix to 
-       * @param {float} m00           the first element of the matrix
-       * @param {float} m01           the third element of the matrix
-       * @param {float} m10           the fourth element of the matrix
-       * @param {float} m11           the fith element of the matrix
-       * @param {float} m12           the sixth element of the matrix
-       */
+      * @member PMatrix2D
+      * The preApply() function applies another matrix to the left of this one. Note that either a PMatrix2D or elements of a matrix can be passed in. 
+      *
+      * @param {PMatrix2D} matrix    the matrix to apply this matrix to 
+      * @param {float} m00           the first element of the matrix
+      * @param {float} m01           the third element of the matrix
+      * @param {float} m10           the fourth element of the matrix
+      * @param {float} m11           the fith element of the matrix
+      * @param {float} m12           the sixth element of the matrix
+      */
       preApply: function() {
         var source;
         if (arguments.length === 1 && arguments[0] instanceof PMatrix2D) {
@@ -4823,11 +4956,11 @@
         this.elements = result.slice();
       },
       /**
-       * @member PMatrix2D
-       * The rotate() function rotates the matrix. 
-       *
-       * @param {float} angle         the angle of rotation in radiants
-       */
+      * @member PMatrix2D
+      * The rotate() function rotates the matrix. 
+      *
+      * @param {float} angle         the angle of rotation in radiants
+      */
       rotate: function(angle) {
         var c = Math.cos(angle);
         var s = Math.sin(angle);
@@ -4841,18 +4974,18 @@
         this.elements[4] = -s * temp1 + c * temp2;
       },
       /**
-       * @member PMatrix2D
-       * The rotateZ() function rotates the matrix. 
-       *
-       * @param {float} angle         the angle of rotation in radiants
-       */
+      * @member PMatrix2D
+      * The rotateZ() function rotates the matrix. 
+      *
+      * @param {float} angle         the angle of rotation in radiants
+      */
       rotateZ: function(angle) {
         this.rotate(angle);
       },
       /**
-       * @member PMatrix2D
-       * The print() function prints out the elements of this matrix
-       */
+      * @member PMatrix2D
+      * The print() function prints out the elements of this matrix
+      */
       print: function() {
         var digits = printMatrixHelper(this.elements);
         var output = "" + p.nfs(this.elements[0], digits, 4) + " " +
@@ -4866,40 +4999,40 @@
     };
 
     /**
-     * PMatrix3D is a 4x4  matrix implementation. The constructor accepts another PMatrix3D or a list of six or sixteen float elements. 
-     * If no parameters are provided the matrix is set to the identity matrix.
-     */
+    * PMatrix3D is a 4x4  matrix implementation. The constructor accepts another PMatrix3D or a list of six or sixteen float elements. 
+    * If no parameters are provided the matrix is set to the identity matrix.
+    */
     var PMatrix3D = p.PMatrix3D = function PMatrix3D() {
       // When a matrix is created, it is set to an identity matrix
       this.reset();
     };
     /**
-     * PMatrix3D methods
-     */
+    * PMatrix3D methods
+    */
     PMatrix3D.prototype = {
       /**
-       * @member PMatrix2D
-       * The set() function sets the matrix elements. The function accepts either another PMatrix3D, an array of elements, or a list of six or sixteen floats. 
-       *
-       * @param {PMatrix3D} matrix    the initial matrix to set to       
-       * @param {float[]} elements    an array of elements to set this matrix to 
-       * @param {float} m00           the first element of the matrix
-       * @param {float} m01           the second element of the matrix
-       * @param {float} m02           the third element of the matrix
-       * @param {float} m03           the fourth element of the matrix
-       * @param {float} m10           the fifth element of the matrix
-       * @param {float} m11           the sixth element of the matrix
-       * @param {float} m12           the seventh element of the matrix
-       * @param {float} m13           the eight element of the matrix
-       * @param {float} m20           the nineth element of the matrix
-       * @param {float} m21           the tenth element of the matrix
-       * @param {float} m22           the eleventh element of the matrix
-       * @param {float} m23           the twelveth element of the matrix
-       * @param {float} m30           the thirteenth element of the matrix
-       * @param {float} m31           the fourtheenth element of the matrix
-       * @param {float} m32           the fivetheenth element of the matrix
-       * @param {float} m33           the sixteenth element of the matrix
-       */
+      * @member PMatrix2D
+      * The set() function sets the matrix elements. The function accepts either another PMatrix3D, an array of elements, or a list of six or sixteen floats. 
+      *
+      * @param {PMatrix3D} matrix    the initial matrix to set to       
+      * @param {float[]} elements    an array of elements to set this matrix to 
+      * @param {float} m00           the first element of the matrix
+      * @param {float} m01           the second element of the matrix
+      * @param {float} m02           the third element of the matrix
+      * @param {float} m03           the fourth element of the matrix
+      * @param {float} m10           the fifth element of the matrix
+      * @param {float} m11           the sixth element of the matrix
+      * @param {float} m12           the seventh element of the matrix
+      * @param {float} m13           the eight element of the matrix
+      * @param {float} m20           the nineth element of the matrix
+      * @param {float} m21           the tenth element of the matrix
+      * @param {float} m22           the eleventh element of the matrix
+      * @param {float} m23           the twelveth element of the matrix
+      * @param {float} m30           the thirteenth element of the matrix
+      * @param {float} m31           the fourtheenth element of the matrix
+      * @param {float} m32           the fivetheenth element of the matrix
+      * @param {float} m33           the sixteenth element of the matrix
+      */
       set: function() {
         if (arguments.length === 16) {
           this.elements = Array.prototype.slice.call(arguments);
@@ -4910,41 +5043,41 @@
         }
       },
       /**
-       * @member PMatrix3D
-       * The get() function returns a copy of this PMatrix3D. 
-       *
-       * @return {PMatrix3D} a copy of this PMatrix3D 
-       */
+      * @member PMatrix3D
+      * The get() function returns a copy of this PMatrix3D. 
+      *
+      * @return {PMatrix3D} a copy of this PMatrix3D 
+      */
       get: function() {
         var outgoing = new PMatrix3D();
         outgoing.set(this.elements);
         return outgoing;
       },
       /**
-       * @member PMatrix3D
-       * The reset() function sets this PMatrix3D to the identity matrix. 
-       */
+      * @member PMatrix3D
+      * The reset() function sets this PMatrix3D to the identity matrix. 
+      */
       reset: function() {
         this.set([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
       },
       /**
-       * @member PMatrix3D
-       * The array() function returns a copy of the element values. 
-       * @addon
-       *
-       * @return {float[]} returns a copy of the element values
-       */
+      * @member PMatrix3D
+      * The array() function returns a copy of the element values. 
+      * @addon
+      *
+      * @return {float[]} returns a copy of the element values
+      */
       array: function array() {
         return this.elements.slice();
       },
       /**
-       * @member PMatrix3D
-       * The translate() function translates this matrix by moving the current coordinates to the location specified by tx, ty, and tz.
-       *
-       * @param {float} tx  the x-axis coordinate to move to 
-       * @param {float} ty  the y-axis coordinate to move to 
-       * @param {float} tz  the z-axis coordinate to move to 
-       */
+      * @member PMatrix3D
+      * The translate() function translates this matrix by moving the current coordinates to the location specified by tx, ty, and tz.
+      *
+      * @param {float} tx  the x-axis coordinate to move to 
+      * @param {float} ty  the y-axis coordinate to move to 
+      * @param {float} tz  the z-axis coordinate to move to 
+      */
       translate: function(tx, ty, tz) {
         if (tz === undef) {
           tz = 0;
@@ -4956,9 +5089,9 @@
         this.elements[15] += tx * this.elements[12] + ty * this.elements[13] + tz * this.elements[14];
       },
       /**
-       * @member PMatrix2D
-       * The transpose() function transpose this matrix.
-       */
+      * @member PMatrix2D
+      * The transpose() function transpose this matrix.
+      */
       transpose: function() {
         var temp = this.elements.slice();
         this.elements[0]  = temp[0];
@@ -4979,18 +5112,18 @@
         this.elements[15] = temp[15];
       },
       /**
-       * @member PMatrix3D
-       * The mult() function multiplied this matrix. 
-       * If two array elements are passed in the function will multiply a two element vector against this matrix.
-       * If target is null or not length four, a new float array will be returned.
-       * The values for vec and target can be the same (though that's less efficient).
-       * If two PVectors are passed in the function multiply the x and y coordinates of a PVector against this matrix.
-       *
-       * @param {PVector} source, target  the PVectors used to multiply this matrix
-       * @param {float[]} source, target  the arrays used to multiply this matrix
-       *
-       * @return {PVector|float[]} returns a PVector or an array representing the new matrix
-       */
+      * @member PMatrix3D
+      * The mult() function multiplied this matrix. 
+      * If two array elements are passed in the function will multiply a two element vector against this matrix.
+      * If target is null or not length four, a new float array will be returned.
+      * The values for vec and target can be the same (though that's less efficient).
+      * If two PVectors are passed in the function multiply the x and y coordinates of a PVector against this matrix.
+      *
+      * @param {PVector} source, target  the PVectors used to multiply this matrix
+      * @param {float[]} source, target  the arrays used to multiply this matrix
+      *
+      * @return {PVector|float[]} returns a PVector or an array representing the new matrix
+      */
       mult: function(source, target) {
         var x, y, z, w;
         if (source instanceof PVector) {
@@ -5032,27 +5165,27 @@
         return target;
       },
       /**
-       * @member PMatrix3D
-       * The preApply() function applies another matrix to the left of this one. Note that either a PMatrix3D or elements of a matrix can be passed in. 
-       *
-       * @param {PMatrix3D} matrix    the matrix to apply this matrix to 
-       * @param {float} m00           the first element of the matrix
-       * @param {float} m01           the second element of the matrix
-       * @param {float} m02           the third element of the matrix
-       * @param {float} m03           the fourth element of the matrix
-       * @param {float} m10           the fifth element of the matrix
-       * @param {float} m11           the sixth element of the matrix
-       * @param {float} m12           the seventh element of the matrix
-       * @param {float} m13           the eight element of the matrix
-       * @param {float} m20           the nineth element of the matrix
-       * @param {float} m21           the tenth element of the matrix
-       * @param {float} m22           the eleventh element of the matrix
-       * @param {float} m23           the twelveth element of the matrix
-       * @param {float} m30           the thirteenth element of the matrix
-       * @param {float} m31           the fourtheenth element of the matrix
-       * @param {float} m32           the fivetheenth element of the matrix
-       * @param {float} m33           the sixteenth element of the matrix
-       */
+      * @member PMatrix3D
+      * The preApply() function applies another matrix to the left of this one. Note that either a PMatrix3D or elements of a matrix can be passed in. 
+      *
+      * @param {PMatrix3D} matrix    the matrix to apply this matrix to 
+      * @param {float} m00           the first element of the matrix
+      * @param {float} m01           the second element of the matrix
+      * @param {float} m02           the third element of the matrix
+      * @param {float} m03           the fourth element of the matrix
+      * @param {float} m10           the fifth element of the matrix
+      * @param {float} m11           the sixth element of the matrix
+      * @param {float} m12           the seventh element of the matrix
+      * @param {float} m13           the eight element of the matrix
+      * @param {float} m20           the nineth element of the matrix
+      * @param {float} m21           the tenth element of the matrix
+      * @param {float} m22           the eleventh element of the matrix
+      * @param {float} m23           the twelveth element of the matrix
+      * @param {float} m30           the thirteenth element of the matrix
+      * @param {float} m31           the fourtheenth element of the matrix
+      * @param {float} m32           the fivetheenth element of the matrix
+      * @param {float} m33           the sixteenth element of the matrix
+      */
       preApply: function() {
         var source;
         if (arguments.length === 1 && arguments[0] instanceof PMatrix3D) {
@@ -5078,27 +5211,27 @@
         this.elements = result.slice();
       },
       /**
-       * @member PMatrix3D
-       * The apply() function multiplies the current matrix by the one specified through the parameters. Note that either a PMatrix3D or a list of floats can be passed in. 
-       *
-       * @param {PMatrix3D} matrix    the matrix to apply this matrix to 
-       * @param {float} m00           the first element of the matrix
-       * @param {float} m01           the second element of the matrix
-       * @param {float} m02           the third element of the matrix
-       * @param {float} m03           the fourth element of the matrix
-       * @param {float} m10           the fifth element of the matrix
-       * @param {float} m11           the sixth element of the matrix
-       * @param {float} m12           the seventh element of the matrix
-       * @param {float} m13           the eight element of the matrix
-       * @param {float} m20           the nineth element of the matrix
-       * @param {float} m21           the tenth element of the matrix
-       * @param {float} m22           the eleventh element of the matrix
-       * @param {float} m23           the twelveth element of the matrix
-       * @param {float} m30           the thirteenth element of the matrix
-       * @param {float} m31           the fourtheenth element of the matrix
-       * @param {float} m32           the fivetheenth element of the matrix
-       * @param {float} m33           the sixteenth element of the matrix
-       */
+      * @member PMatrix3D
+      * The apply() function multiplies the current matrix by the one specified through the parameters. Note that either a PMatrix3D or a list of floats can be passed in. 
+      *
+      * @param {PMatrix3D} matrix    the matrix to apply this matrix to 
+      * @param {float} m00           the first element of the matrix
+      * @param {float} m01           the second element of the matrix
+      * @param {float} m02           the third element of the matrix
+      * @param {float} m03           the fourth element of the matrix
+      * @param {float} m10           the fifth element of the matrix
+      * @param {float} m11           the sixth element of the matrix
+      * @param {float} m12           the seventh element of the matrix
+      * @param {float} m13           the eight element of the matrix
+      * @param {float} m20           the nineth element of the matrix
+      * @param {float} m21           the tenth element of the matrix
+      * @param {float} m22           the eleventh element of the matrix
+      * @param {float} m23           the twelveth element of the matrix
+      * @param {float} m30           the thirteenth element of the matrix
+      * @param {float} m31           the fourtheenth element of the matrix
+      * @param {float} m32           the fivetheenth element of the matrix
+      * @param {float} m33           the sixteenth element of the matrix
+      */
       apply: function() {
         var source;
         if (arguments.length === 1 && arguments[0] instanceof PMatrix3D) {
@@ -5124,11 +5257,11 @@
         this.elements = result.slice();
       },
       /**
-       * @member PMatrix3D
-       * The rotate() function rotates the matrix. 
-       *
-       * @param {float} angle         the angle of rotation in radiants
-       */
+      * @member PMatrix3D
+      * The rotate() function rotates the matrix. 
+      *
+      * @param {float} angle         the angle of rotation in radiants
+      */
       rotate: function(angle, v0, v1, v2) {
         if (!v1) {
           this.rotateZ(angle);
@@ -5153,28 +5286,28 @@
         }
       },
       /**
-       * @member PMatrix2D
-       * The invApply() function applies the inverted matrix to this matrix.
-       *
-       * @param {float} m00           the first element of the matrix
-       * @param {float} m01           the second element of the matrix
-       * @param {float} m02           the third element of the matrix
-       * @param {float} m03           the fourth element of the matrix
-       * @param {float} m10           the fifth element of the matrix
-       * @param {float} m11           the sixth element of the matrix
-       * @param {float} m12           the seventh element of the matrix
-       * @param {float} m13           the eight element of the matrix
-       * @param {float} m20           the nineth element of the matrix
-       * @param {float} m21           the tenth element of the matrix
-       * @param {float} m22           the eleventh element of the matrix
-       * @param {float} m23           the twelveth element of the matrix
-       * @param {float} m30           the thirteenth element of the matrix
-       * @param {float} m31           the fourtheenth element of the matrix
-       * @param {float} m32           the fivetheenth element of the matrix
-       * @param {float} m33           the sixteenth element of the matrix
-       *
-       * @return {boolean} returns true if the operation was successful. 
-       */
+      * @member PMatrix2D
+      * The invApply() function applies the inverted matrix to this matrix.
+      *
+      * @param {float} m00           the first element of the matrix
+      * @param {float} m01           the second element of the matrix
+      * @param {float} m02           the third element of the matrix
+      * @param {float} m03           the fourth element of the matrix
+      * @param {float} m10           the fifth element of the matrix
+      * @param {float} m11           the sixth element of the matrix
+      * @param {float} m12           the seventh element of the matrix
+      * @param {float} m13           the eight element of the matrix
+      * @param {float} m20           the nineth element of the matrix
+      * @param {float} m21           the tenth element of the matrix
+      * @param {float} m22           the eleventh element of the matrix
+      * @param {float} m23           the twelveth element of the matrix
+      * @param {float} m30           the thirteenth element of the matrix
+      * @param {float} m31           the fourtheenth element of the matrix
+      * @param {float} m32           the fivetheenth element of the matrix
+      * @param {float} m33           the sixteenth element of the matrix
+      *
+      * @return {boolean} returns true if the operation was successful. 
+      */
       invApply: function() {
         if (inverseCopy === undef) {
           inverseCopy = new PMatrix3D();
@@ -5190,47 +5323,47 @@
         return true;
       },
       /**
-       * @member PMatrix3D
-       * The rotateZ() function rotates the matrix. 
-       *
-       * @param {float} angle         the angle of rotation in radiants
-       */
+      * @member PMatrix3D
+      * The rotateZ() function rotates the matrix. 
+      *
+      * @param {float} angle         the angle of rotation in radiants
+      */
       rotateX: function(angle) {
         var c = p.cos(angle);
         var s = p.sin(angle);
         this.apply([1, 0, 0, 0, 0, c, -s, 0, 0, s, c, 0, 0, 0, 0, 1]);
       },
       /**
-       * @member PMatrix3D
-       * The rotateY() function rotates the matrix. 
-       *
-       * @param {float} angle         the angle of rotation in radiants
-       */
+      * @member PMatrix3D
+      * The rotateY() function rotates the matrix. 
+      *
+      * @param {float} angle         the angle of rotation in radiants
+      */
       rotateY: function(angle) {
         var c = p.cos(angle);
         var s = p.sin(angle);
         this.apply([c, 0, s, 0, 0, 1, 0, 0, -s, 0, c, 0, 0, 0, 0, 1]);
       },
       /**
-       * @member PMatrix3D
-       * The rotateZ() function rotates the matrix. 
-       *
-       * @param {float} angle         the angle of rotation in radiants
-       */
+      * @member PMatrix3D
+      * The rotateZ() function rotates the matrix. 
+      *
+      * @param {float} angle         the angle of rotation in radiants
+      */
       rotateZ: function(angle) {
         var c = Math.cos(angle);
         var s = Math.sin(angle);
         this.apply([c, -s, 0, 0, s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
       },
       /**
-       * @member PMatrix3D
-       * The scale() function increases or decreases the size of a matrix by expanding and contracting vertices. When only one parameter is specified scale will occur in all dimensions.
-       * This is equivalent to a three parameter call.
-       *
-       * @param {float} sx  the amount to scale on the x-axis
-       * @param {float} sy  the amount to scale on the y-axis
-       * @param {float} sz  the amount to scale on the z-axis
-       */
+      * @member PMatrix3D
+      * The scale() function increases or decreases the size of a matrix by expanding and contracting vertices. When only one parameter is specified scale will occur in all dimensions.
+      * This is equivalent to a three parameter call.
+      *
+      * @param {float} sx  the amount to scale on the x-axis
+      * @param {float} sy  the amount to scale on the y-axis
+      * @param {float} sz  the amount to scale on the z-axis
+      */
       scale: function(sx, sy, sz) {
         if (sx && !sy && !sz) {
           sy = sz = sx;
@@ -5254,23 +5387,23 @@
         }
       },
       /**
-       * @member PMatrix3D
-       * The skewX() function skews the matrix along the x-axis the amount specified by the angle parameter.
-       * Angles should be specified in radians (values from 0 to PI*2) or converted to radians with the <b>radians()</b> function.
-       *
-       * @param {float} angle  angle of skew specified in radians
-       */
+      * @member PMatrix3D
+      * The skewX() function skews the matrix along the x-axis the amount specified by the angle parameter.
+      * Angles should be specified in radians (values from 0 to PI*2) or converted to radians with the <b>radians()</b> function.
+      *
+      * @param {float} angle  angle of skew specified in radians
+      */
       skewX: function(angle) {
         var t = Math.tan(angle);
         this.apply(1, t, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
       },
       /**
-       * @member PMatrix3D
-       * The skewY() function skews the matrix along the y-axis the amount specified by the angle parameter.
-       * Angles should be specified in radians (values from 0 to PI*2) or converted to radians with the <b>radians()</b> function.
-       *
-       * @param {float} angle  angle of skew specified in radians
-       */
+      * @member PMatrix3D
+      * The skewY() function skews the matrix along the y-axis the amount specified by the angle parameter.
+      * Angles should be specified in radians (values from 0 to PI*2) or converted to radians with the <b>radians()</b> function.
+      *
+      * @param {float} angle  angle of skew specified in radians
+      */
       skewY: function(angle) {
         var t = Math.tan(angle);
         this.apply(1, 0, 0, 0, t, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
@@ -5308,11 +5441,11 @@
         }
       },
       /**
-       * @member PMatrix3D
-       * The invert() function inverts this matrix
-       *
-       * @return {boolean} true if successful
-       */
+      * @member PMatrix3D
+      * The invert() function inverts this matrix
+      *
+      * @return {boolean} true if successful
+      */
       invert: function() {
         var fA0 = this.elements[0] * this.elements[5] - this.elements[1] * this.elements[4];
         var fA1 = this.elements[0] * this.elements[6] - this.elements[2] * this.elements[4];
@@ -5385,9 +5518,9 @@
         return str;
       },
       /**
-       * @member PMatrix3D
-       * The print() function prints out the elements of this matrix
-       */
+      * @member PMatrix3D
+      * The print() function prints out the elements of this matrix
+      */
       print: function() {
         var digits = printMatrixHelper(this.elements);
 
@@ -5425,19 +5558,19 @@
     };
 
     /**
-     * @private
-     * The matrix stack stores the transformations and translations that occur within the space.
-     */
+    * @private
+    * The matrix stack stores the transformations and translations that occur within the space.
+    */
     var PMatrixStack = p.PMatrixStack = function PMatrixStack() {
       this.matrixStack = [];
     };
 
     /**
-     * @member PMatrixStack
-     * load pushes the matrix given in the function into the stack
-     *
-     * @param {Object | Array} matrix the matrix to be pushed into the stack
-     */
+    * @member PMatrixStack
+    * load pushes the matrix given in the function into the stack
+    *
+    * @param {Object | Array} matrix the matrix to be pushed into the stack
+    */
     PMatrixStack.prototype.load = function load() {
       var tmpMatrix;
       if (p.use3DContext) {
@@ -5455,29 +5588,29 @@
     };
 
     /**
-     * @member PMatrixStack
-     * push adds a duplicate of the top of the stack onto the stack - uses the peek function
-     */
+    * @member PMatrixStack
+    * push adds a duplicate of the top of the stack onto the stack - uses the peek function
+    */
     PMatrixStack.prototype.push = function push() {
       this.matrixStack.push(this.peek());
     };
 
     /**
-     * @member PMatrixStack
-     * pop removes returns the matrix at the top of the stack
-     *
-     * @returns {Object} the matrix at the top of the stack
-     */
+    * @member PMatrixStack
+    * pop removes returns the matrix at the top of the stack
+    *
+    * @returns {Object} the matrix at the top of the stack
+    */
     PMatrixStack.prototype.pop = function pop() {
       return this.matrixStack.pop();
     };
 
     /**
-     * @member PMatrixStack
-     * peek returns but doesn't remove the matrix at the top of the stack
-     *
-     * @returns {Object} the matrix at the top of the stack
-     */
+    * @member PMatrixStack
+    * peek returns but doesn't remove the matrix at the top of the stack
+    *
+    * @returns {Object} the matrix at the top of the stack
+    */
     PMatrixStack.prototype.peek = function peek() {
       var tmpMatrix;
       if (p.use3DContext) {
@@ -5491,11 +5624,11 @@
     };
 
     /**
-     * @member PMatrixStack
-     * this function multiplies the matrix at the top of the stack with the matrix given as a parameter
-     *
-     * @param {Object | Array} matrix the matrix to be multiplied into the stack
-     */
+    * @member PMatrixStack
+    * this function multiplies the matrix at the top of the stack with the matrix given as a parameter
+    *
+    * @param {Object | Array} matrix the matrix to be multiplied into the stack
+    */
     PMatrixStack.prototype.mult = function mult(matrix) {
       this.matrixStack[this.matrixStack.length - 1].apply(matrix);
     };
@@ -5619,19 +5752,19 @@
     };
 
     /**
-     * Sorts an array of numbers from smallest to largest and puts an array of 
-     * words in alphabetical order. The original array is not modified, a 
-     * re-ordered array is returned. The count parameter states the number of 
-     * elements to sort. For example if there are 12 elements in an array and 
-     * if count is the value 5, only the first five elements on the array will 
-     * be sorted. Alphabetical ordering is case insensitive.
-     * 
-     * @param {String[] | int[] | float[]}  array Array of elements to sort
-     * @param {int}                         numElem Number of elements to sort
-     *
-     * @returns {String[] | int[] | float[]} Array (same datatype as the input)
-     *
-     * @see reverse
+    * Sorts an array of numbers from smallest to largest and puts an array of 
+    * words in alphabetical order. The original array is not modified, a 
+    * re-ordered array is returned. The count parameter states the number of 
+    * elements to sort. For example if there are 12 elements in an array and 
+    * if count is the value 5, only the first five elements on the array will 
+    * be sorted. Alphabetical ordering is case insensitive.
+    * 
+    * @param {String[] | int[] | float[]}  array Array of elements to sort
+    * @param {int}                         numElem Number of elements to sort
+    *
+    * @returns {String[] | int[] | float[]} Array (same datatype as the input)
+    *
+    * @see reverse
     */
     p.sort = function(array, numElem) {
       var ret = [];
@@ -7111,6 +7244,7 @@
         // even if the color buffer isn't cleared with background(),
         // the depth buffer needs to be cleared regardless.
         curContext.clear(curContext.DEPTH_BUFFER_BIT);
+        curContextCache = { attributes: {}, locations: {} };
         // Delete all the lighting states and the materials the
         // user set in the last draw() call.
         p.noLights();
@@ -7262,6 +7396,15 @@
       stopLooping();
 
       Processing.removeInstance(p.externals.canvas.id);
+
+      // Step through the libraries to detach them
+      for (var lib in Processing.lib) {
+        if (Processing.lib.hasOwnProperty(lib)) {
+          if (Processing.lib[lib].hasOwnProperty("detach")) {
+            Processing.lib[lib].detach(p);
+          }
+        }
+      }
 
       for (var i=0, ehl=eventHandlers.length; i<ehl; i++) {
         var elem = eventHandlers[i][0],
@@ -7504,21 +7647,11 @@
       var autoDetectDecimals = rightDigits === 0;
       var rightDigitsOfDefault = (rightDigits === undef || rightDigits < 0) ? 0 : rightDigits;
 
-
-      // Change the way the number is 'floored' based on whether it is odd or even.
-      if (rightDigits < 0 && Math.floor(value) % 2 === 1) {
-        // Make sure 1.49 rounds to 1, but 1.5 rounds to 2.
-        if ((value - Math.floor(value)) >= 0.5) {
-          value += 1;
-        }
-      }
-
-
       var absValue = Math.abs(value);
-      if(autoDetectDecimals) {
+      if (autoDetectDecimals) {
         rightDigitsOfDefault = 1;
         absValue *= 10;
-        while(Math.abs(Math.round(absValue) - absValue) > 1e-6 && rightDigitsOfDefault < 7) {
+        while (Math.abs(Math.round(absValue) - absValue) > 1e-6 && rightDigitsOfDefault < 7) {
           ++rightDigitsOfDefault;
           absValue *= 10;
         }
@@ -7526,7 +7659,19 @@
         absValue *= Math.pow(10, rightDigitsOfDefault);
       }
 
-      var number = Math.round(absValue);
+      // Using Java's default rounding policy HALF_EVEN. This policy is based 
+      // on the idea that 0.5 values round to the nearest even number, and 
+      // everything else is rounded normally.
+      var number, doubled = absValue * 2;
+      if (Math.floor(absValue) === absValue) {
+        number = absValue;
+      } else if (Math.floor(doubled) === doubled) {
+        var floored = Math.floor(absValue);
+        number = floored + (floored % 2);
+      } else {
+        number = Math.round(absValue);
+      }
+
       var buffer = "";
       var totalDigits = leftDigits + rightDigitsOfDefault;
       while (totalDigits > 0 || number > 0) {
@@ -7580,103 +7725,8 @@
     * @see nfp
     * @see nfc
     */
-    p.nf = function() {
-      var str, num, pad, arr, left, right, isNegative, test, i;
+    p.nf  = function(value, leftDigits, rightDigits) { return nfCore(value, "", "-", leftDigits, rightDigits); };
 
-      if (arguments.length === 2 && typeof arguments[0] === 'number' && typeof arguments[1] === 'number' && (arguments[0] + "").indexOf('.') === -1) {
-        num = arguments[0];
-        pad = arguments[1];
-
-        isNegative = num < 0;
-
-        if (isNegative) {
-          num = Math.abs(num);
-        }
-
-        str = "" + num;
-        for (i = pad - str.length; i > 0; i--) {
-          str = "0" + str;
-        }
-
-        if (isNegative) {
-          str = "-" + str;
-        }
-      } else if (arguments.length === 2 && typeof arguments[0] === 'object' && arguments[0].constructor === Array && typeof arguments[1] === 'number') {
-        arr = arguments[0];
-        pad = arguments[1];
-
-        str = new Array(arr.length);
-
-        for (i = 0; i < arr.length && str !== undef; i++) {
-          test = p.nf(arr[i], pad);
-          if (test === undef) {
-            str = undef;
-          } else {
-            str[i] = test;
-          }
-        }
-      } else if (arguments.length === 3 && typeof arguments[0] === 'number' && typeof arguments[1] === 'number' && typeof arguments[2] === 'number' && (arguments[0] + "").indexOf('.') >= 0) {
-        num = arguments[0];
-        left = arguments[1];
-        right = arguments[2];
-
-        isNegative = num < 0;
-
-        if (isNegative) {
-          num = Math.abs(num);
-        }
-
-        // Change the way the number is 'floored' based on whether it is odd or even.
-        if (right < 0 && Math.floor(num) % 2 === 1) {
-          // Make sure 1.49 rounds to 1, but 1.5 rounds to 2.
-          if ((num) - Math.floor(num) >= 0.5) {
-            num = num + 1;
-          }
-        }
-
-        str = "" + num;
-
-        for (i = left - str.indexOf('.'); i > 0; i--) {
-          str = "0" + str;
-        }
-
-        var numDec = str.length - str.indexOf('.') - 1;
-        if (numDec <= right) {
-          for (i = right - (str.length - str.indexOf('.') - 1); i > 0; i--) {
-            str = str + "0";
-          }
-        } else if (right > 0) {
-          str = str.substring(0, str.length - (numDec - right));
-        } else if (right < 0) {
-
-          str = str.substring(0, str.indexOf('.'));
-        }
-
-        if (isNegative) {
-          str = "-" + str;
-        }
-      } else if (arguments.length === 3 && typeof arguments[0] === 'object' && arguments[0].constructor === Array && typeof arguments[1] === 'number' && typeof arguments[2] === 'number') {
-        arr = arguments[0];
-        left = arguments[1];
-        right = arguments[2];
-
-        str = new Array(arr.length);
-
-        for (i = 0; i < arr.length && str !== undef; i++) {
-          test = p.nf(arr[i], left, right);
-          if (test === undef) {
-            str = undef;
-          } else {
-            str[i] = test;
-          }
-        }
-      }
-
-      return str;
-    };
-
-    // TODO: need to switch nf over to using nfCore...
-    //    p.nf  = function(value, leftDigits, rightDigits) { return nfCore(value, "", "-", leftDigits, rightDigits); };
     /**
     * Utility function for formatting numbers into strings. Similar to nf()  but leaves a blank space in front 
     * of positive numbers so they align with negative numbers in spite of the minus symbol. There are two 
@@ -7823,7 +7873,20 @@
     * @see saveBytes
     */
     p.loadStrings = function loadStrings(filename) {
-      return (localStorage[filename] ? localStorage[filename] : ajax(filename).slice(0, -1)).split("\n");
+      if (localStorage[filename]) {
+        return localStorage[filename].split("\n"); 
+      }
+
+      var filecontent = ajax(filename);
+      if(typeof filecontent !== "string" || filecontent === "") {
+        return [];
+      }
+
+      // deal with the fact that Windows uses \r\n, Unix uses \n,
+      // Mac uses \r, and we actually expect \n
+      filecontent = filecontent.replace(/(\r\n?)/g,"\n").replace(/\n$/,""); 
+
+      return filecontent.split("\n");
     };
 
     // Writes an array of strings to a file, one line per string
@@ -7868,16 +7931,16 @@
     // String Functions
     ////////////////////////////////////////////////////////////////////////////
     /**
-     * The matchAll() function is identical to match(), except that it returns an array of all matches in
-     * the specified String, rather than just the first.
-     * 
-     * @param {String} aString  the String to search inside
-     * @param {String} aRegExp  the regexp to be used for matching
-     *
-     * @return {String[]} returns an array of matches
-     *
-     * @see #match
-     */
+    * The matchAll() function is identical to match(), except that it returns an array of all matches in
+    * the specified String, rather than just the first.
+    * 
+    * @param {String} aString  the String to search inside
+    * @param {String} aRegExp  the regexp to be used for matching
+    *
+    * @return {String[]} returns an array of matches
+    *
+    * @see #match
+    */
     p.matchAll = function matchAll(aString, aRegExp) {
       var results = [],
           latest;
@@ -7891,35 +7954,35 @@
       return results.length > 0 ? results : null;
     };
     /**
-     * The replaceAll() function searches all matches between a substring (or regular expression) and a string, and replaces the matched substring with a new substring
-     * 
-     * @param {String} re         a substring or a regular expression
-     * @param {String} replace    the string to replace the found value
-     *
-     * @return {String[]} returns an array of matches
-     *
-     * @see #match
-     */
+    * The replaceAll() function searches all matches between a substring (or regular expression) and a string, and replaces the matched substring with a new substring
+    * 
+    * @param {String} re         a substring or a regular expression
+    * @param {String} replace    the string to replace the found value
+    *
+    * @return {String[]} returns an array of matches
+    *
+    * @see #match
+    */
     String.prototype.replaceAll = function(re, replace) {
       return this.replace(new RegExp(re, "g"), replace);
     };
     /**
-     * The equals() function compares two strings to see if they are the same. 
-     * This method is necessary because it's not possible to compare strings using the equality operator (==). 
-     * Returns true if the strings are the same and false if they are not.
-     *
-     * @param {String} str  a string used for comparison
-     *
-     * @return {boolean} true is the strings are the same false otherwise
-     */
+    * The equals() function compares two strings to see if they are the same. 
+    * This method is necessary because it's not possible to compare strings using the equality operator (==). 
+    * Returns true if the strings are the same and false if they are not.
+    *
+    * @param {String} str  a string used for comparison
+    *
+    * @return {boolean} true is the strings are the same false otherwise
+    */
     String.prototype.equals = function equals(str) {
       return this.valueOf() === str.valueOf();
     };
     /**
-     * The toCharArray() function splits the string into a char array. 
-     *
-     * @return {Char[]} a char array
-     */
+    * The toCharArray() function splits the string into a char array. 
+    *
+    * @return {Char[]} a char array
+    */
     String.prototype.toCharArray = function() {
       var chars = this.split("");
       for (var i = chars.length - 1; i >= 0; i--) {
@@ -7928,15 +7991,15 @@
       return chars;
     };
     /**
-     * The match() function matches a string with a regular expression, and returns the match as an
-     * array. The first index is the matching expression, and array elements
-     * [1] and higher represent each of the groups (sequences found in parens).
-     *
-     * @param {String} str      the String to be searched
-     * @param {String} regexp   the regexp to be used for matching
-     *
-     * @return {String[]} an array of matching strings
-     */
+    * The match() function matches a string with a regular expression, and returns the match as an
+    * array. The first index is the matching expression, and array elements
+    * [1] and higher represent each of the groups (sequences found in parens).
+    *
+    * @param {String} str      the String to be searched
+    * @param {String} regexp   the regexp to be used for matching
+    *
+    * @return {String[]} an array of matching strings
+    */
     p.match = function(str, regexp) {
       return str.match(regexp);
     };
@@ -7945,14 +8008,14 @@
 
     p.console = window.console || Processing.logger;
     /**
-     * The println() function writes to the console area of the Processing environment. 
-     * Each call to this function creates a new line of output. Individual elements can be separated with quotes ("") and joined with the string concatenation operator (+).
-     *
-     * @param {String} message the string to write to the console
-     *
-     * @see #join
-     * @see #print
-     */
+    * The println() function writes to the console area of the Processing environment. 
+    * Each call to this function creates a new line of output. Individual elements can be separated with quotes ("") and joined with the string concatenation operator (+).
+    *
+    * @param {String} message the string to write to the console
+    *
+    * @see #join
+    * @see #print
+    */
     p.println = function println(message) {
       var bufferLen = logBuffer.length;
       if (bufferLen) {
@@ -7967,12 +8030,12 @@
       }
     };
     /**
-     * The print() function writes to the console area of the Processing environment.
-     *
-     * @param {String} message the string to write to the console
-     *
-     * @see #join
-     */
+    * The print() function writes to the console area of the Processing environment.
+    *
+    * @param {String} message the string to write to the console
+    *
+    * @see #join
+    */
     p.print = function print(message) {
       logBuffer.push(message);
     };
@@ -7991,15 +8054,15 @@
       }
     };
     /**
-     * Remove whitespace characters from the beginning and ending
-     * of a String or a String array. Works like String.trim() but includes the
-     * unicode nbsp character as well. If an array is passed in the function will return a new array not effecting the array passed in. 
-     *
-     * @param {String} str    the string to trim
-     * @param {String[]} str  the string array to trim
-     *
-     * @return {String|String[]} retrurns a string or an array will removed whitespaces
-     */
+    * Remove whitespace characters from the beginning and ending
+    * of a String or a String array. Works like String.trim() but includes the
+    * unicode nbsp character as well. If an array is passed in the function will return a new array not effecting the array passed in. 
+    *
+    * @param {String} str    the string to trim
+    * @param {String[]} str  the string array to trim
+    *
+    * @return {String|String[]} retrurns a string or an array will removed whitespaces
+    */
     p.trim = function(str) {
       if (str instanceof Array) {
         var arr = [];
@@ -8120,6 +8183,10 @@
       } else {
         return intScalar(val);
       }
+    };
+
+    p.__int_cast = function(val) {
+      return 0|val;
     };
 
     ////////////////////////////////////////////////////////////////////////////
@@ -8849,12 +8916,13 @@
           curContext = curElement.getContext("experimental-webgl");
           p.use3DContext = true;
           canTex = curContext.createTexture(); // texture
+          textTex = curContext.createTexture(); // texture
         } catch(e_size) {
           Processing.debug(e_size);
         }
 
         if (!curContext) {
-          throw "OPENGL 3D context is not supported on this browser.";
+          throw "WebGL context is not supported on this browser.";
         } else {
           for (var i = 0; i < PConstants.SINCOS_LENGTH; i++) {
             sinLUT[i] = p.sin(i * (PConstants.PI / 180) * 0.5);
@@ -8884,7 +8952,7 @@
           curContext.useProgram(programObject3D);
 
           // assume we aren't using textures by default
-          uniformi(programObject3D, "usingTexture", usingTexture);
+          uniformi("usingTexture3d", programObject3D, "usingTexture", usingTexture);
           p.lightFalloff(1, 0, 0);
           p.shininess(1);
           p.ambient(255, 255, 255);
@@ -8984,6 +9052,13 @@
         lineCap: curContext.lineCap,
         lineJoin: curContext.lineJoin
       };
+      // remove the style width and height properties to ensure that the canvas gets set to 
+      // aWidth and aHeight coming in
+      if (curElement.style.length > 0 ) {
+        curElement.style.removeProperty("width");
+        curElement.style.removeProperty("height");
+      }
+      
       curElement.width = p.width = aWidth || 100;
       curElement.height = p.height = aHeight || 100;
 
@@ -9032,28 +9107,28 @@
     ////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Adds an ambient light. Ambient light doesn't come from a specific direction, 
-     * the rays have light have bounced around so much that objects are evenly lit 
-     * from all sides. Ambient lights are almost always used in combination with 
-     * other types of lights. Lights need to be included in the <b>draw()</b> to 
-     * remain persistent in a looping program. Placing them in the <b>setup()</b> 
-     * of a looping program will cause them to only have an effect the first time 
-     * through the loop. The effect of the parameters is determined by the current 
-     * color mode.
-     *
-     * @param {int | float} r red or hue value
-     * @param {int | float} g green or hue value
-     * @param {int | float} b blue or hue value
-     * @param {int | float} x ignored
-     * @param {int | float} y ignored
-     * @param {int | float} z ignored
-     *
-     * @returns none
-     *
-     * @see lights
-     * @see directionalLight
-     * @see pointLight
-     * @see spotLight
+    * Adds an ambient light. Ambient light doesn't come from a specific direction, 
+    * the rays have light have bounced around so much that objects are evenly lit 
+    * from all sides. Ambient lights are almost always used in combination with 
+    * other types of lights. Lights need to be included in the <b>draw()</b> to 
+    * remain persistent in a looping program. Placing them in the <b>setup()</b> 
+    * of a looping program will cause them to only have an effect the first time 
+    * through the loop. The effect of the parameters is determined by the current 
+    * color mode.
+    *
+    * @param {int | float} r red or hue value
+    * @param {int | float} g green or hue value
+    * @param {int | float} b blue or hue value
+    * @param {int | float} x ignored
+    * @param {int | float} y ignored
+    * @param {int | float} z ignored
+    *
+    * @returns none
+    *
+    * @see lights
+    * @see directionalLight
+    * @see pointLight
+    * @see spotLight
     */
     p.ambientLight = function(r, g, b, x, y, z) {
       if (p.use3DContext) {
@@ -9068,40 +9143,40 @@
         view.mult(pos, pos);
 
         curContext.useProgram(programObject3D);
-        uniformf(programObject3D, "lights[" + lightCount + "].color", [r / 255, g / 255, b / 255]);
-        uniformf(programObject3D, "lights[" + lightCount + "].position", pos.array());
-        uniformi(programObject3D, "lights[" + lightCount + "].type", 0);
-        uniformi(programObject3D, "lightCount", ++lightCount);
+        uniformf("lights.color.3d." + lightCount, programObject3D, "lights[" + lightCount + "].color", [r / 255, g / 255, b / 255]);
+        uniformf("lights.position.3d." + lightCount, programObject3D, "lights[" + lightCount + "].position", pos.array());
+        uniformi("lights.type.3d." + lightCount, programObject3D, "lights[" + lightCount + "].type", 0);
+        uniformi("lightCount3d", programObject3D, "lightCount", ++lightCount);
       }
     };
 
     /**
-     * Adds a directional light. Directional light comes from one direction and 
-     * is stronger when hitting a surface squarely and weaker if it hits at a 
-     * gentle angle. After hitting a surface, a directional lights scatters in 
-     * all directions. Lights need to be included in the <b>draw()</b> to remain 
-     * persistent in a looping program. Placing them in the <b>setup()</b> of a 
-     * looping program will cause them to only have an effect the first time 
-     * through the loop. The affect of the <br>r</b>, <br>g</b>, and <br>b</b> 
-     * parameters is determined by the current color mode. The <b>nx</b>, 
-     * <b>ny</b>, and <b>nz</b> parameters specify the direction the light is 
-     * facing. For example, setting <b>ny</b> to -1 will cause the geometry to be 
-     * lit from below (the light is facing directly upward).
-     *
-     * @param {int | float} r red or hue value
-     * @param {int | float} g green or hue value
-     * @param {int | float} b blue or hue value
-     * 
-     * @param {int | float} nx direction along the x axis
-     * @param {int | float} ny direction along the y axis
-     * @param {int | float} nz direction along the z axis
-     *
-     * @returns none
-     *
-     * @see lights
-     * @see ambientLight
-     * @see pointLight
-     * @see spotLight
+    * Adds a directional light. Directional light comes from one direction and 
+    * is stronger when hitting a surface squarely and weaker if it hits at a 
+    * gentle angle. After hitting a surface, a directional lights scatters in 
+    * all directions. Lights need to be included in the <b>draw()</b> to remain 
+    * persistent in a looping program. Placing them in the <b>setup()</b> of a 
+    * looping program will cause them to only have an effect the first time 
+    * through the loop. The affect of the <br>r</b>, <br>g</b>, and <br>b</b> 
+    * parameters is determined by the current color mode. The <b>nx</b>, 
+    * <b>ny</b>, and <b>nz</b> parameters specify the direction the light is 
+    * facing. For example, setting <b>ny</b> to -1 will cause the geometry to be 
+    * lit from below (the light is facing directly upward).
+    *
+    * @param {int | float} r red or hue value
+    * @param {int | float} g green or hue value
+    * @param {int | float} b blue or hue value
+    * 
+    * @param {int | float} nx direction along the x axis
+    * @param {int | float} ny direction along the y axis
+    * @param {int | float} nz direction along the z axis
+    *
+    * @returns none
+    *
+    * @see lights
+    * @see ambientLight
+    * @see pointLight
+    * @see spotLight
     */
     p.directionalLight = function(r, g, b, nx, ny, nz) {
       if (p.use3DContext) {
@@ -9120,90 +9195,90 @@
         view.apply(modelView.array());
         view.mult(dir, dir);
 
-        uniformf(programObject3D, "lights[" + lightCount + "].color", [r / 255, g / 255, b / 255]);
-        uniformf(programObject3D, "lights[" + lightCount + "].position", [-dir[0], -dir[1], -dir[2]]);
-        uniformi(programObject3D, "lights[" + lightCount + "].type", 1);
-        uniformi(programObject3D, "lightCount", ++lightCount);
+        uniformf("lights.color.3d." + lightCount, programObject3D, "lights[" + lightCount + "].color", [r / 255, g / 255, b / 255]);
+        uniformf("lights.position.3d." + lightCount, programObject3D, "lights[" + lightCount + "].position", [-dir[0], -dir[1], -dir[2]]);
+        uniformi("lights.type.3d." + lightCount, programObject3D, "lights[" + lightCount + "].type", 1);
+        uniformi("lightCount3d", programObject3D, "lightCount", ++lightCount);
       }
     };
 
     /**
-     * Sets the falloff rates for point lights, spot lights, and ambient lights. 
-     * The parameters are used to determine the falloff with the following equation:
-     * 
-     * d = distance from light position to vertex position
-     * falloff = 1 / (CONSTANT + d * LINEAR + (d*d) * QUADRATIC)
-     *
-     * Like <b>fill()</b>, it affects only the elements which are created after it in the 
-     * code. The default value if <b>LightFalloff(1.0, 0.0, 0.0)</b>. Thinking about an 
-     * ambient light with a falloff can be tricky. It is used, for example, if you 
-     * wanted a region of your scene to be lit ambiently one color and another region 
-     * to be lit ambiently by another color, you would use an ambient light with location 
-     * and falloff. You can think of it as a point light that doesn't care which direction 
-     * a surface is facing.
-     *
-     * @param {int | float} constant constant value for determining falloff
-     * @param {int | float} linear linear value for determining falloff
-     * @param {int | float} quadratic quadratic value for determining falloff
-     *
-     * @returns none
-     *
-     * @see lights
-     * @see ambientLight
-     * @see pointLight
-     * @see spotLight
-     * @see lightSpecular
+    * Sets the falloff rates for point lights, spot lights, and ambient lights. 
+    * The parameters are used to determine the falloff with the following equation:
+    * 
+    * d = distance from light position to vertex position
+    * falloff = 1 / (CONSTANT + d * LINEAR + (d*d) * QUADRATIC)
+    *
+    * Like <b>fill()</b>, it affects only the elements which are created after it in the 
+    * code. The default value if <b>LightFalloff(1.0, 0.0, 0.0)</b>. Thinking about an 
+    * ambient light with a falloff can be tricky. It is used, for example, if you 
+    * wanted a region of your scene to be lit ambiently one color and another region 
+    * to be lit ambiently by another color, you would use an ambient light with location 
+    * and falloff. You can think of it as a point light that doesn't care which direction 
+    * a surface is facing.
+    *
+    * @param {int | float} constant constant value for determining falloff
+    * @param {int | float} linear linear value for determining falloff
+    * @param {int | float} quadratic quadratic value for determining falloff
+    *
+    * @returns none
+    *
+    * @see lights
+    * @see ambientLight
+    * @see pointLight
+    * @see spotLight
+    * @see lightSpecular
     */
     p.lightFalloff = function lightFalloff(constant, linear, quadratic) {
       if (p.use3DContext) {
         curContext.useProgram(programObject3D);
-        uniformf(programObject3D, "falloff", [constant, linear, quadratic]);
+        uniformf("falloff3d", programObject3D, "falloff", [constant, linear, quadratic]);
       }
     };
 
     /**
-     * Sets the specular color for lights. Like <b>fill()</b>, it affects only the 
-     * elements which are created after it in the code. Specular refers to light 
-     * which bounces off a surface in a perferred direction (rather than bouncing 
-     * in all directions like a diffuse light) and is used for creating highlights. 
-     * The specular quality of a light interacts with the specular material qualities 
-     * set through the <b>specular()</b> and <b>shininess()</b> functions.
-     *
-     * @param {int | float} r red or hue value
-     * @param {int | float} g green or hue value
-     * @param {int | float} b blue or hue value
-     *
-     * @returns none
-     *
-     * @see lights
-     * @see ambientLight
-     * @see pointLight
-     * @see spotLight
+    * Sets the specular color for lights. Like <b>fill()</b>, it affects only the 
+    * elements which are created after it in the code. Specular refers to light 
+    * which bounces off a surface in a perferred direction (rather than bouncing 
+    * in all directions like a diffuse light) and is used for creating highlights. 
+    * The specular quality of a light interacts with the specular material qualities 
+    * set through the <b>specular()</b> and <b>shininess()</b> functions.
+    *
+    * @param {int | float} r red or hue value
+    * @param {int | float} g green or hue value
+    * @param {int | float} b blue or hue value
+    *
+    * @returns none
+    *
+    * @see lights
+    * @see ambientLight
+    * @see pointLight
+    * @see spotLight
     */
     p.lightSpecular = function lightSpecular(r, g, b) {
       if (p.use3DContext) {
         curContext.useProgram(programObject3D);
-        uniformf(programObject3D, "specular", [r / 255, g / 255, b / 255]);
+        uniformf("specular3d", programObject3D, "specular", [r / 255, g / 255, b / 255]);
       }
     };
 
     /**
-     * Sets the default ambient light, directional light, falloff, and specular 
-     * values. The defaults are ambientLight(128, 128, 128) and 
-     * directionalLight(128, 128, 128, 0, 0, -1), lightFalloff(1, 0, 0), and 
-     * lightSpecular(0, 0, 0). Lights need to be included in the draw() to remain 
-     * persistent in a looping program. Placing them in the setup() of a looping 
-     * program will cause them to only have an effect the first time through the 
-     * loop.
-     *
-     * @returns none
-     *
-     * @see ambientLight
-     * @see directionalLight
-     * @see pointLight
-     * @see spotLight
-     * @see noLights
-     *
+    * Sets the default ambient light, directional light, falloff, and specular 
+    * values. The defaults are ambientLight(128, 128, 128) and 
+    * directionalLight(128, 128, 128, 0, 0, -1), lightFalloff(1, 0, 0), and 
+    * lightSpecular(0, 0, 0). Lights need to be included in the draw() to remain 
+    * persistent in a looping program. Placing them in the setup() of a looping 
+    * program will cause them to only have an effect the first time through the 
+    * loop.
+    *
+    * @returns none
+    *
+    * @see ambientLight
+    * @see directionalLight
+    * @see pointLight
+    * @see spotLight
+    * @see noLights
+    *
     */
     p.lights = function lights() {
       p.ambientLight(128, 128, 128);
@@ -9213,26 +9288,26 @@
     };
 
     /**
-     * Adds a point light. Lights need to be included in the <b>draw()</b> to remain 
-     * persistent in a looping program. Placing them in the <b>setup()</b> of a 
-     * looping program will cause them to only have an effect the first time through 
-     * the loop. The affect of the <b>r</b>, <b>g</b>, and <b>b</b> parameters 
-     * is determined by the current color mode. The <b>x</b>, <b>y</b>, and <b>z</b> 
-     * parameters set the position of the light.
-     * 
-     * @param {int | float} r red or hue value
-     * @param {int | float} g green or hue value
-     * @param {int | float} b blue or hue value
-     * @param {int | float} x x coordinate of the light
-     * @param {int | float} y y coordinate of the light
-     * @param {int | float} z z coordinate of the light
-     *
-     * @returns none
-     *
-     * @see lights
-     * @see directionalLight
-     * @see ambientLight
-     * @see spotLight
+    * Adds a point light. Lights need to be included in the <b>draw()</b> to remain 
+    * persistent in a looping program. Placing them in the <b>setup()</b> of a 
+    * looping program will cause them to only have an effect the first time through 
+    * the loop. The affect of the <b>r</b>, <b>g</b>, and <b>b</b> parameters 
+    * is determined by the current color mode. The <b>x</b>, <b>y</b>, and <b>z</b> 
+    * parameters set the position of the light.
+    * 
+    * @param {int | float} r red or hue value
+    * @param {int | float} g green or hue value
+    * @param {int | float} b blue or hue value
+    * @param {int | float} x x coordinate of the light
+    * @param {int | float} y y coordinate of the light
+    * @param {int | float} z z coordinate of the light
+    *
+    * @returns none
+    *
+    * @see lights
+    * @see directionalLight
+    * @see ambientLight
+    * @see spotLight
     */
     p.pointLight = function(r, g, b, x, y, z) {
       if (p.use3DContext) {
@@ -9249,59 +9324,59 @@
         view.mult(pos, pos);
 
         curContext.useProgram(programObject3D);
-        uniformf(programObject3D, "lights[" + lightCount + "].color", [r / 255, g / 255, b / 255]);
-        uniformf(programObject3D, "lights[" + lightCount + "].position", pos.array());
-        uniformi(programObject3D, "lights[" + lightCount + "].type", 2);
-        uniformi(programObject3D, "lightCount", ++lightCount);
+        uniformf("lights.color.3d." + lightCount, programObject3D, "lights[" + lightCount + "].color", [r / 255, g / 255, b / 255]);
+        uniformf("lights.position.3d." + lightCount, programObject3D, "lights[" + lightCount + "].position", pos.array());
+        uniformi("lights.type.3d." + lightCount, programObject3D, "lights[" + lightCount + "].type", 2);
+        uniformi("lightCount3d", programObject3D, "lightCount", ++lightCount);
       }
     };
 
     /**
-     * Disable all lighting. Lighting is turned off by default and enabled with
-     * the lights() method. This function can be used to disable lighting so 
-     * that 2D geometry (which does not require lighting) can be drawn after a 
-     * set of lighted 3D geometry.
-     *
-     * @returns none
-     *
-     * @see lights
+    * Disable all lighting. Lighting is turned off by default and enabled with
+    * the lights() method. This function can be used to disable lighting so 
+    * that 2D geometry (which does not require lighting) can be drawn after a 
+    * set of lighted 3D geometry.
+    *
+    * @returns none
+    *
+    * @see lights
     */
     p.noLights = function noLights() {
       if (p.use3DContext) {
         lightCount = 0;
         curContext.useProgram(programObject3D);
-        uniformi(programObject3D, "lightCount", lightCount);
+        uniformi("lightCount3d", programObject3D, "lightCount", lightCount);
       }
     };
 
     /**
-     * Adds a spot light. Lights need to be included in the <b>draw()</b> to 
-     * remain persistent in a looping program. Placing them in the <b>setup()</b> 
-     * of a looping program will cause them to only have an effect the first time 
-     * through the loop. The affect of the <b>r</b>, <b>g</b>, and <b>b</b> parameters 
-     * is determined by the current color mode. The <b>x</b>, <b>y</b>, and <b>z</b> 
-     * parameters specify the position of the light and <b>nx</b>, <b>ny</b>, <b>nz</b> 
-     * specify the direction or light. The angle parameter affects <b>angle</b> of the 
-     * spotlight cone.
-     *
-     * @param {int | float} r red or hue value
-     * @param {int | float} g green or hue value
-     * @param {int | float} b blue or hue value
-     * @param {int | float} x coordinate of the light
-     * @param {int | float} y coordinate of the light
-     * @param {int | float} z coordinate of the light
-     * @param {int | float} nx direction along the x axis
-     * @param {int | float} ny direction along the y axis
-     * @param {int | float} nz direction along the z axis
-     * @param {float} angle angle of the spotlight cone
-     * @param {float} concentration exponent determining the center bias of the cone
-     *
-     * @returns none
-     *
-     * @see lights
-     * @see directionalLight
-     * @see ambientLight
-     * @see pointLight
+    * Adds a spot light. Lights need to be included in the <b>draw()</b> to 
+    * remain persistent in a looping program. Placing them in the <b>setup()</b> 
+    * of a looping program will cause them to only have an effect the first time 
+    * through the loop. The affect of the <b>r</b>, <b>g</b>, and <b>b</b> parameters 
+    * is determined by the current color mode. The <b>x</b>, <b>y</b>, and <b>z</b> 
+    * parameters specify the position of the light and <b>nx</b>, <b>ny</b>, <b>nz</b> 
+    * specify the direction or light. The angle parameter affects <b>angle</b> of the 
+    * spotlight cone.
+    *
+    * @param {int | float} r red or hue value
+    * @param {int | float} g green or hue value
+    * @param {int | float} b blue or hue value
+    * @param {int | float} x coordinate of the light
+    * @param {int | float} y coordinate of the light
+    * @param {int | float} z coordinate of the light
+    * @param {int | float} nx direction along the x axis
+    * @param {int | float} ny direction along the y axis
+    * @param {int | float} nz direction along the z axis
+    * @param {float} angle angle of the spotlight cone
+    * @param {float} concentration exponent determining the center bias of the cone
+    *
+    * @returns none
+    *
+    * @see lights
+    * @see directionalLight
+    * @see ambientLight
+    * @see pointLight
     */
     p.spotLight = function spotLight(r, g, b, x, y, z, nx, ny, nz, angle, concentration) {
       if (p.use3DContext) {
@@ -9327,13 +9402,13 @@
         view.apply(modelView.array());
         view.mult(dir, dir);
 
-        uniformf(programObject3D, "lights[" + lightCount + "].color", [r / 255, g / 255, b / 255]);
-        uniformf(programObject3D, "lights[" + lightCount + "].position", pos.array());
-        uniformf(programObject3D, "lights[" + lightCount + "].direction", [dir[0], dir[1], dir[2]]);
-        uniformf(programObject3D, "lights[" + lightCount + "].concentration", concentration);
-        uniformf(programObject3D, "lights[" + lightCount + "].angle", angle);
-        uniformi(programObject3D, "lights[" + lightCount + "].type", 3);
-        uniformi(programObject3D, "lightCount", ++lightCount);
+        uniformf("lights.color.3d." + lightCount, programObject3D, "lights[" + lightCount + "].color", [r / 255, g / 255, b / 255]);
+        uniformf("lights.position.3d." + lightCount, programObject3D, "lights[" + lightCount + "].position", pos.array());
+        uniformf("lights.direction.3d." + lightCount, programObject3D, "lights[" + lightCount + "].direction", [dir[0], dir[1], dir[2]]);
+        uniformf("lights.concentration.3d." + lightCount, programObject3D, "lights[" + lightCount + "].concentration", concentration);
+        uniformf("lights.angle.3d." + lightCount, programObject3D, "lights[" + lightCount + "].angle", angle);
+        uniformi("lights.type.3d." + lightCount, programObject3D, "lights[" + lightCount + "].type", 3);
+        uniformi("lightCount3d", programObject3D, "lightCount", ++lightCount);
       }
     };
 
@@ -9342,25 +9417,25 @@
     ////////////////////////////////////////////////////////////////////////////
 
     /**
-     * The <b>beginCamera()</b> and <b>endCamera()</b> functions enable advanced customization of the camera space.
-     * The functions are useful if you want to more control over camera movement, however for most users, the <b>camera()</b>
-     * function will be sufficient.<br /><br />The camera functions will replace any transformations (such as <b>rotate()</b>
-     * or <b>translate()</b>) that occur before them in <b>draw()</b>, but they will not automatically replace the camera
-     * transform itself. For this reason, camera functions should be placed at the beginning of <b>draw()</b> (so that
-     * transformations happen afterwards), and the <b>camera()</b> function can be used after <b>beginCamera()</b> if
-     * you want to reset the camera before applying transformations.<br /><br />This function sets the matrix mode to the
-     * camera matrix so calls such as <b>translate()</b>, <b>rotate()</b>, applyMatrix() and resetMatrix() affect the camera.
-     * <b>beginCamera()</b> should always be used with a following <b>endCamera()</b> and pairs of <b>beginCamera()</b> and
-     * <b>endCamera()</b> cannot be nested.
-     *
-     * @see camera
-     * @see endCamera
-     * @see applyMatrix
-     * @see resetMatrix
-     * @see translate
-     * @see rotate
-     * @see scale
-     */
+    * The <b>beginCamera()</b> and <b>endCamera()</b> functions enable advanced customization of the camera space.
+    * The functions are useful if you want to more control over camera movement, however for most users, the <b>camera()</b>
+    * function will be sufficient.<br /><br />The camera functions will replace any transformations (such as <b>rotate()</b>
+    * or <b>translate()</b>) that occur before them in <b>draw()</b>, but they will not automatically replace the camera
+    * transform itself. For this reason, camera functions should be placed at the beginning of <b>draw()</b> (so that
+    * transformations happen afterwards), and the <b>camera()</b> function can be used after <b>beginCamera()</b> if
+    * you want to reset the camera before applying transformations.<br /><br />This function sets the matrix mode to the
+    * camera matrix so calls such as <b>translate()</b>, <b>rotate()</b>, applyMatrix() and resetMatrix() affect the camera.
+    * <b>beginCamera()</b> should always be used with a following <b>endCamera()</b> and pairs of <b>beginCamera()</b> and
+    * <b>endCamera()</b> cannot be nested.
+    *
+    * @see camera
+    * @see endCamera
+    * @see applyMatrix
+    * @see resetMatrix
+    * @see translate
+    * @see rotate
+    * @see scale
+    */
     p.beginCamera = function beginCamera() {
       if (manipulatingCamera) {
         throw ("You cannot call beginCamera() again before calling endCamera()");
@@ -9372,11 +9447,11 @@
     };
 
     /**
-     * The <b>beginCamera()</b> and <b>endCamera()</b> functions enable advanced customization of the camera space.
-     * Please see the reference for <b>beginCamera()</b> for a description of how the functions are used.
-     *
-     * @see beginCamera
-     */
+    * The <b>beginCamera()</b> and <b>endCamera()</b> functions enable advanced customization of the camera space.
+    * Please see the reference for <b>beginCamera()</b> for a description of how the functions are used.
+    *
+    * @see beginCamera
+    */
     p.endCamera = function endCamera() {
       if (!manipulatingCamera) {
         throw ("You cannot call endCamera() before calling beginCamera()");
@@ -9390,27 +9465,27 @@
     };
 
     /**
-     * Sets the position of the camera through setting the eye position, the center of the scene, and which axis is facing
-     * upward. Moving the eye position and the direction it is pointing (the center of the scene) allows the images to be
-     * seen from different angles. The version without any parameters sets the camera to the default position, pointing to
-     * the center of the display window with the Y axis as up. The default values are camera(width/2.0, height/2.0,
-     * (height/2.0) / tan(PI*60.0 / 360.0), width/2.0, height/2.0, 0, 0, 1, 0). This function is similar to gluLookAt()
-     * in OpenGL, but it first clears the current camera settings.
-     *
-     * @param {float} eyeX    x-coordinate for the eye
-     * @param {float} eyeY    y-coordinate for the eye
-     * @param {float} eyeZ    z-coordinate for the eye
-     * @param {float} centerX x-coordinate for the center of the scene
-     * @param {float} centerY y-coordinate for the center of the scene
-     * @param {float} centerZ z-coordinate for the center of the scene
-     * @param {float} upX     usually 0.0, 1.0, -1.0
-     * @param {float} upY     usually 0.0, 1.0, -1.0
-     * @param {float} upZ     usually 0.0, 1.0, -1.0
-     *
-     * @see beginCamera
-     * @see endCamera
-     * @see frustum
-     */
+    * Sets the position of the camera through setting the eye position, the center of the scene, and which axis is facing
+    * upward. Moving the eye position and the direction it is pointing (the center of the scene) allows the images to be
+    * seen from different angles. The version without any parameters sets the camera to the default position, pointing to
+    * the center of the display window with the Y axis as up. The default values are camera(width/2.0, height/2.0,
+    * (height/2.0) / tan(PI*60.0 / 360.0), width/2.0, height/2.0, 0, 0, 1, 0). This function is similar to gluLookAt()
+    * in OpenGL, but it first clears the current camera settings.
+    *
+    * @param {float} eyeX    x-coordinate for the eye
+    * @param {float} eyeY    y-coordinate for the eye
+    * @param {float} eyeZ    z-coordinate for the eye
+    * @param {float} centerX x-coordinate for the center of the scene
+    * @param {float} centerY y-coordinate for the center of the scene
+    * @param {float} centerZ z-coordinate for the center of the scene
+    * @param {float} upX     usually 0.0, 1.0, -1.0
+    * @param {float} upY     usually 0.0, 1.0, -1.0
+    * @param {float} upZ     usually 0.0, 1.0, -1.0
+    *
+    * @see beginCamera
+    * @see endCamera
+    * @see frustum
+    */
     p.camera = function camera(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ) {
       if (arguments.length === 0) {
         //in case canvas is resized
@@ -9428,12 +9503,12 @@
         upZ = 0;
       }
 
-      var z = new p.PVector(eyeX - centerX, eyeY - centerY, eyeZ - centerZ);
-      var y = new p.PVector(upX, upY, upZ);
+      var z = new PVector(eyeX - centerX, eyeY - centerY, eyeZ - centerZ);
+      var y = new PVector(upX, upY, upZ);
       var transX, transY, transZ;
       z.normalize();
-      var x = p.PVector.cross(y, z);
-      y = p.PVector.cross(z, x);
+      var x = PVector.cross(y, z);
+      y = PVector.cross(z, x);
       x.normalize();
       y.normalize();
 
@@ -9451,18 +9526,18 @@
     };
 
     /**
-     * Sets a perspective projection applying foreshortening, making distant objects appear smaller than closer ones. The
-     * parameters define a viewing volume with the shape of truncated pyramid. Objects near to the front of the volume appear
-     * their actual size, while farther objects appear smaller. This projection simulates the perspective of the world more
-     * accurately than orthographic projection. The version of perspective without parameters sets the default perspective and
-     * the version with four parameters allows the programmer to set the area precisely. The default values are:
-     * perspective(PI/3.0, width/height, cameraZ/10.0, cameraZ*10.0) where cameraZ is ((height/2.0) / tan(PI*60.0/360.0));
-     *
-     * @param {float} fov     field-of-view angle (in radians) for vertical direction
-     * @param {float} aspect  ratio of width to height
-     * @param {float} zNear   z-position of nearest clipping plane
-     * @param {float} zFar    z-positions of farthest clipping plane
-     */
+    * Sets a perspective projection applying foreshortening, making distant objects appear smaller than closer ones. The
+    * parameters define a viewing volume with the shape of truncated pyramid. Objects near to the front of the volume appear
+    * their actual size, while farther objects appear smaller. This projection simulates the perspective of the world more
+    * accurately than orthographic projection. The version of perspective without parameters sets the default perspective and
+    * the version with four parameters allows the programmer to set the area precisely. The default values are:
+    * perspective(PI/3.0, width/height, cameraZ/10.0, cameraZ*10.0) where cameraZ is ((height/2.0) / tan(PI*60.0/360.0));
+    *
+    * @param {float} fov     field-of-view angle (in radians) for vertical direction
+    * @param {float} aspect  ratio of width to height
+    * @param {float} zNear   z-position of nearest clipping plane
+    * @param {float} zFar    z-positions of farthest clipping plane
+    */
     p.perspective = function perspective(fov, aspect, near, far) {
       if (arguments.length === 0) {
         //in case canvas is resized
@@ -9486,21 +9561,21 @@
     };
 
     /**
-     * Sets a perspective matrix defined through the parameters. Works like glFrustum, except it wipes out the current
-     * perspective matrix rather than muliplying itself with it.
-     *
-     * @param {float} left   left coordinate of the clipping plane
-     * @param {float} right  right coordinate of the clipping plane
-     * @param {float} bottom bottom coordinate of the clipping plane
-     * @param {float} top    top coordinate of the clipping plane
-     * @param {float} near   near coordinate of the clipping plane
-     * @param {float} far    far coordinate of the clipping plane
-     *
-     * @see beginCamera
-     * @see camera
-     * @see endCamera
-     * @see perspective
-     */
+    * Sets a perspective matrix defined through the parameters. Works like glFrustum, except it wipes out the current
+    * perspective matrix rather than muliplying itself with it.
+    *
+    * @param {float} left   left coordinate of the clipping plane
+    * @param {float} right  right coordinate of the clipping plane
+    * @param {float} bottom bottom coordinate of the clipping plane
+    * @param {float} top    top coordinate of the clipping plane
+    * @param {float} near   near coordinate of the clipping plane
+    * @param {float} far    far coordinate of the clipping plane
+    *
+    * @see beginCamera
+    * @see camera
+    * @see endCamera
+    * @see perspective
+    */
     p.frustum = function frustum(left, right, bottom, top, near, far) {
       frustumMode = true;
       projection = new PMatrix3D();
@@ -9511,19 +9586,19 @@
     };
 
     /**
-     * Sets an orthographic projection and defines a parallel clipping volume. All objects with the same dimension appear
-     * the same size, regardless of whether they are near or far from the camera. The parameters to this function specify
-     * the clipping volume where left and right are the minimum and maximum x values, top and bottom are the minimum and
-     * maximum y values, and near and far are the minimum and maximum z values. If no parameters are given, the default
-     * is used: ortho(0, width, 0, height, -10, 10).
-     *
-     * @param {float} left   left plane of the clipping volume
-     * @param {float} right  right plane of the clipping volume
-     * @param {float} bottom bottom plane of the clipping volume
-     * @param {float} top    top plane of the clipping volume
-     * @param {float} near   maximum distance from the origin to the viewer
-     * @param {float} far    maximum distance from the origin away from the viewer
-     */
+    * Sets an orthographic projection and defines a parallel clipping volume. All objects with the same dimension appear
+    * the same size, regardless of whether they are near or far from the camera. The parameters to this function specify
+    * the clipping volume where left and right are the minimum and maximum x values, top and bottom are the minimum and
+    * maximum y values, and near and far are the minimum and maximum z values. If no parameters are given, the default
+    * is used: ortho(0, width, 0, height, -10, 10).
+    *
+    * @param {float} left   left plane of the clipping volume
+    * @param {float} right  right plane of the clipping volume
+    * @param {float} bottom bottom plane of the clipping volume
+    * @param {float} top    top plane of the clipping volume
+    * @param {float} near   maximum distance from the origin to the viewer
+    * @param {float} far    maximum distance from the origin away from the viewer
+    */
     p.ortho = function ortho(left, right, bottom, top, near, far) {
       if (arguments.length === 0) {
         left = 0;
@@ -9548,14 +9623,14 @@
       frustumMode = false;
     };
     /**
-     * The printProjection() prints the current projection matrix to the text window. 
-     */
+    * The printProjection() prints the current projection matrix to the text window. 
+    */
     p.printProjection = function() {
       projection.print();
     };
     /**
-     * The printCamera() function prints the current camera matrix.
-     */
+    * The printCamera() function prints the current camera matrix.
+    */
     p.printCamera = function() {
       cam.print();
     };
@@ -9564,13 +9639,13 @@
     // Shapes
     ////////////////////////////////////////////////////////////////////////////
     /**
-     * The box() function renders a box. A box is an extruded rectangle. A box with equal dimension on all sides is a cube.
-     * Calling this function with only one parameter will create a cube.
-     *
-     * @param {int|float} w  dimension of the box in the x-dimension
-     * @param {int|float} h  dimension of the box in the y-dimension
-     * @param {int|float} d  dimension of the box in the z-dimension
-     */
+    * The box() function renders a box. A box is an extruded rectangle. A box with equal dimension on all sides is a cube.
+    * Calling this function with only one parameter will create a cube.
+    *
+    * @param {int|float} w  dimension of the box in the x-dimension
+    * @param {int|float} h  dimension of the box in the y-dimension
+    * @param {int|float} d  dimension of the box in the z-dimension
+    */
     p.box = function(w, h, d) {
       if (p.use3DContext) {
         // user can uniformly scale the box by
@@ -9597,11 +9672,11 @@
         if (doFill === true) {
           curContext.useProgram(programObject3D);
 
-          disableVertexAttribPointer(programObject3D, "aTexture");
+          disableVertexAttribPointer("aTexture3d", programObject3D, "aTexture");
 
-          uniformMatrix(programObject3D, "model", false, model.array());
-          uniformMatrix(programObject3D, "view", false, view.array());
-          uniformMatrix(programObject3D, "projection", false, proj.array());
+          uniformMatrix("model3d", programObject3D, "model", false, model.array());
+          uniformMatrix("view3d", programObject3D, "view", false, view.array());
+          uniformMatrix("projection3d", programObject3D, "projection", false, proj.array());
 
           // fix stitching problems. (lines get occluded by triangles
           // since they share the same depth values). This is not entirely
@@ -9609,7 +9684,7 @@
           // developers can start playing around with styles.
           curContext.enable(curContext.POLYGON_OFFSET_FILL);
           curContext.polygonOffset(1, 1);
-          uniformf(programObject3D, "color", fillStyle);
+          uniformf("color3d", programObject3D, "color", fillStyle);
 
           // Create the normal transformation matrix
           var v = new PMatrix3D();
@@ -9625,14 +9700,14 @@
           normalMatrix.invert();
           normalMatrix.transpose();
 
-          uniformMatrix(programObject3D, "normalTransform", false, normalMatrix.array());
+          uniformMatrix("normalTransform3d", programObject3D, "normalTransform", false, normalMatrix.array());
 
-          vertexAttribPointer(programObject3D, "Vertex", 3, boxBuffer);
-          vertexAttribPointer(programObject3D, "Normal", 3, boxNormBuffer);
+          vertexAttribPointer("vertex3d", programObject3D, "Vertex", 3, boxBuffer);
+          vertexAttribPointer("normal3d", programObject3D, "Normal", 3, boxNormBuffer);
 
           // Ugly hack. Can't simply disable the vertex attribute
           // array. No idea why, so I'm passing in dummy data.
-          vertexAttribPointer(programObject3D, "aColor", 3, boxNormBuffer);
+          vertexAttribPointer("aColor3d", programObject3D, "aColor", 3, boxNormBuffer);
 
           curContext.drawArrays(curContext.TRIANGLES, 0, boxVerts.length / 3);
           curContext.disable(curContext.POLYGON_OFFSET_FILL);
@@ -9640,15 +9715,15 @@
 
         if (lineWidth > 0 && doStroke) {
           curContext.useProgram(programObject2D);
-          uniformMatrix(programObject2D, "model", false, model.array());
-          uniformMatrix(programObject2D, "view", false, view.array());
-          uniformMatrix(programObject2D, "projection", false, proj.array());
+          uniformMatrix("model2d", programObject2D, "model", false, model.array());
+          uniformMatrix("view2d", programObject2D, "view", false, view.array());
+          uniformMatrix("projection2d", programObject2D, "projection", false, proj.array());
 
-          uniformf(programObject2D, "color", strokeStyle);
-          uniformi(programObject2D, "picktype", 0);
+          uniformf("color2d", programObject2D, "color", strokeStyle);
+          uniformi("picktype2d", programObject2D, "picktype", 0);
 
-          vertexAttribPointer(programObject2D, "Vertex", 3, boxOutlineBuffer);
-          disableVertexAttribPointer(programObject2D, "aTextureCoord");
+          vertexAttribPointer("vertex2d", programObject2D, "Vertex", 3, boxOutlineBuffer);
+          disableVertexAttribPointer("aTextureCoord2d", programObject2D, "aTextureCoord");
 
           curContext.lineWidth(lineWidth);
           curContext.drawArrays(curContext.LINES, 0, boxOutlineVerts.length / 3);
@@ -9656,11 +9731,11 @@
       }
     };
     /**
-     * The initSphere() function is a helper function used by <b>sphereDetail()</b>
-     * This function creates and stores sphere vertices every time the user changes sphere detail. 
-     *
-     * @see #sphereDetail
-     */
+    * The initSphere() function is a helper function used by <b>sphereDetail()</b>
+    * This function creates and stores sphere vertices every time the user changes sphere detail. 
+    *
+    * @see #sphereDetail
+    */
     var initSphere = function() {
       var i;
       sphereVerts = [];
@@ -9734,26 +9809,26 @@
     };
 
     /**
-     * The sphereDetail() function controls the detail used to render a sphere by adjusting the number of
-     * vertices of the sphere mesh. The default resolution is 30, which creates
-     * a fairly detailed sphere definition with vertices every 360/30 = 12
-     * degrees. If you're going to render a great number of spheres per frame,
-     * it is advised to reduce the level of detail using this function.
-     * The setting stays active until <b>sphereDetail()</b> is called again with
-     * a new parameter and so should <i>not</i> be called prior to every
-     * <b>sphere()</b> statement, unless you wish to render spheres with
-     * different settings, e.g. using less detail for smaller spheres or ones
-     * further away from the camera. To control the detail of the horizontal
-     * and vertical resolution independently, use the version of the functions
-     * with two parameters. Calling this function with one parameter sets the number of segments 
-     *(minimum of 3) used per full circle revolution. This is equivalent to calling the function with 
-     * two identical values. 
-     *
-     * @param {int} ures    number of segments used horizontally (longitudinally) per full circle revolution
-     * @param {int} vres    number of segments used vertically (latitudinally) from top to bottom
-     *
-     * @see #sphere()
-     */
+    * The sphereDetail() function controls the detail used to render a sphere by adjusting the number of
+    * vertices of the sphere mesh. The default resolution is 30, which creates
+    * a fairly detailed sphere definition with vertices every 360/30 = 12
+    * degrees. If you're going to render a great number of spheres per frame,
+    * it is advised to reduce the level of detail using this function.
+    * The setting stays active until <b>sphereDetail()</b> is called again with
+    * a new parameter and so should <i>not</i> be called prior to every
+    * <b>sphere()</b> statement, unless you wish to render spheres with
+    * different settings, e.g. using less detail for smaller spheres or ones
+    * further away from the camera. To control the detail of the horizontal
+    * and vertical resolution independently, use the version of the functions
+    * with two parameters. Calling this function with one parameter sets the number of segments 
+    *(minimum of 3) used per full circle revolution. This is equivalent to calling the function with 
+    * two identical values. 
+    *
+    * @param {int} ures    number of segments used horizontally (longitudinally) per full circle revolution
+    * @param {int} vres    number of segments used vertically (latitudinally) from top to bottom
+    *
+    * @see #sphere()
+    */
     p.sphereDetail = function sphereDetail(ures, vres) {
       var i;
 
@@ -9813,11 +9888,11 @@
     };
 
     /**
-     * The sphere() function draws a sphere with radius r centered at coordinate 0, 0, 0.
-     * A sphere is a hollow ball made from tessellated triangles.
-     * 
-     * @param {int|float} r the radius of the sphere
-     */
+    * The sphere() function draws a sphere with radius r centered at coordinate 0, 0, 0.
+    * A sphere is a hollow ball made from tessellated triangles.
+    * 
+    * @param {int|float} r the radius of the sphere
+    */
     p.sphere = function() {
       if (p.use3DContext) {
         var sRad = arguments[0], c;
@@ -9857,19 +9932,19 @@
           normalMatrix.transpose();
 
           curContext.useProgram(programObject3D);
-          disableVertexAttribPointer(programObject3D, "aTexture");
+          disableVertexAttribPointer("aTexture3d", programObject3D, "aTexture");
 
-          uniformMatrix(programObject3D, "model", false, model.array());
-          uniformMatrix(programObject3D, "view", false, view.array());
-          uniformMatrix(programObject3D, "projection", false, proj.array());
-          uniformMatrix(programObject3D, "normalTransform", false, normalMatrix.array());
+          uniformMatrix("model3d", programObject3D, "model", false, model.array());
+          uniformMatrix("view3d", programObject3D, "view", false, view.array());
+          uniformMatrix("projection3d", programObject3D, "projection", false, proj.array());
+          uniformMatrix("normalTransform3d", programObject3D, "normalTransform", false, normalMatrix.array());
 
-          vertexAttribPointer(programObject3D, "Vertex", 3, sphereBuffer);
-          vertexAttribPointer(programObject3D, "Normal", 3, sphereBuffer);
+          vertexAttribPointer("vertex3d", programObject3D, "Vertex", 3, sphereBuffer);
+          vertexAttribPointer("normal3d", programObject3D, "Normal", 3, sphereBuffer);
 
           // Ugly hack. Can't simply disable the vertex attribute
           // array. No idea why, so I'm passing in dummy data.
-          vertexAttribPointer(programObject3D, "aColor", 3, sphereBuffer);
+          vertexAttribPointer("aColor3d", programObject3D, "aColor", 3, sphereBuffer);
 
           // fix stitching problems. (lines get occluded by triangles
           // since they share the same depth values). This is not entirely
@@ -9878,7 +9953,7 @@
           curContext.enable(curContext.POLYGON_OFFSET_FILL);
           curContext.polygonOffset(1, 1);
 
-          uniformf(programObject3D, "color", fillStyle);
+          uniformf("color3d", programObject3D, "color", fillStyle);
 
           curContext.drawArrays(curContext.TRIANGLE_STRIP, 0, sphereVerts.length / 3);
           curContext.disable(curContext.POLYGON_OFFSET_FILL);
@@ -9886,15 +9961,15 @@
 
         if (lineWidth > 0 && doStroke) {
           curContext.useProgram(programObject2D);
-          uniformMatrix(programObject2D, "model", false, model.array());
-          uniformMatrix(programObject2D, "view", false, view.array());
-          uniformMatrix(programObject2D, "projection", false, proj.array());
+          uniformMatrix("model2d", programObject2D, "model", false, model.array());
+          uniformMatrix("view2d", programObject2D, "view", false, view.array());
+          uniformMatrix("projection2d", programObject2D, "projection", false, proj.array());
 
-          vertexAttribPointer(programObject2D, "Vertex", 3, sphereBuffer);
-          disableVertexAttribPointer(programObject2D, "aTextureCoord");
+          vertexAttribPointer("vertex2d", programObject2D, "Vertex", 3, sphereBuffer);
+          disableVertexAttribPointer("aTextureCoord2d", programObject2D, "aTextureCoord");
 
-          uniformf(programObject2D, "color", strokeStyle);
-          uniformi(programObject2D, "picktype", 0);
+          uniformf("color2d", programObject2D, "color", strokeStyle);
+          uniformi("picktype2d", programObject2D, "picktype", 0);
 
           curContext.lineWidth(lineWidth);
           curContext.drawArrays(curContext.LINE_STRIP, 0, sphereVerts.length / 3);
@@ -9907,21 +9982,21 @@
     ////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Returns the three-dimensional X, Y, Z position in model space. This returns 
-     * the X value for a given coordinate based on the current set of transformations 
-     * (scale, rotate, translate, etc.) The X value can be used to place an object 
-     * in space relative to the location of the original point once the transformations 
-     * are no longer in use.<br />
-     * <br />
-     *
-     * @param {int | float} x 3D x coordinate to be mapped
-     * @param {int | float} y 3D y coordinate to be mapped
-     * @param {int | float} z 3D z coordinate to be mapped
-     *
-     * @returns {float}
-     *
-     * @see modelY
-     * @see modelZ
+    * Returns the three-dimensional X, Y, Z position in model space. This returns 
+    * the X value for a given coordinate based on the current set of transformations 
+    * (scale, rotate, translate, etc.) The X value can be used to place an object 
+    * in space relative to the location of the original point once the transformations 
+    * are no longer in use.<br />
+    * <br />
+    *
+    * @param {int | float} x 3D x coordinate to be mapped
+    * @param {int | float} y 3D y coordinate to be mapped
+    * @param {int | float} z 3D z coordinate to be mapped
+    *
+    * @returns {float}
+    *
+    * @see modelY
+    * @see modelZ
     */
     p.modelX = function modelX(x, y, z) {
       var mv = modelView.array();
@@ -9939,21 +10014,21 @@
     };
 
     /**
-     * Returns the three-dimensional X, Y, Z position in model space. This returns 
-     * the Y value for a given coordinate based on the current set of transformations 
-     * (scale, rotate, translate, etc.) The Y value can be used to place an object in 
-     * space relative to the location of the original point once the transformations 
-     * are no longer in use.<br />
-     * <br />
-     *
-     * @param {int | float} x 3D x coordinate to be mapped
-     * @param {int | float} y 3D y coordinate to be mapped
-     * @param {int | float} z 3D z coordinate to be mapped
-     *
-     * @returns {float}
-     * 
-     * @see modelX
-     * @see modelZ
+    * Returns the three-dimensional X, Y, Z position in model space. This returns 
+    * the Y value for a given coordinate based on the current set of transformations 
+    * (scale, rotate, translate, etc.) The Y value can be used to place an object in 
+    * space relative to the location of the original point once the transformations 
+    * are no longer in use.<br />
+    * <br />
+    *
+    * @param {int | float} x 3D x coordinate to be mapped
+    * @param {int | float} y 3D y coordinate to be mapped
+    * @param {int | float} z 3D z coordinate to be mapped
+    *
+    * @returns {float}
+    * 
+    * @see modelX
+    * @see modelZ
     */
     p.modelY = function modelY(x, y, z) {
       var mv = modelView.array();
@@ -9971,20 +10046,20 @@
     };
 
     /**
-     * Returns the three-dimensional X, Y, Z position in model space. This returns 
-     * the Z value for a given coordinate based on the current set of transformations 
-     * (scale, rotate, translate, etc.) The Z value can be used to place an object in 
-     * space relative to the location of the original point once the transformations 
-     * are no longer in use.
-     *
-     * @param {int | float} x 3D x coordinate to be mapped
-     * @param {int | float} y 3D y coordinate to be mapped
-     * @param {int | float} z 3D z coordinate to be mapped
-     *
-     * @returns {float}
-     *
-     * @see modelX
-     * @see modelY
+    * Returns the three-dimensional X, Y, Z position in model space. This returns 
+    * the Z value for a given coordinate based on the current set of transformations 
+    * (scale, rotate, translate, etc.) The Z value can be used to place an object in 
+    * space relative to the location of the original point once the transformations 
+    * are no longer in use.
+    *
+    * @param {int | float} x 3D x coordinate to be mapped
+    * @param {int | float} y 3D y coordinate to be mapped
+    * @param {int | float} z 3D z coordinate to be mapped
+    *
+    * @returns {float}
+    *
+    * @see modelX
+    * @see modelY
     */
     p.modelZ = function modelZ(x, y, z) {
       var mv = modelView.array();
@@ -10006,21 +10081,21 @@
     ////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Sets the ambient reflectance for shapes drawn to the screen. This is 
-     * combined with the ambient light component of environment. The color 
-     * components set through the parameters define the reflectance. For example in 
-     * the default color mode, setting v1=255, v2=126, v3=0, would cause all the 
-     * red light to reflect and half of the green light to reflect. Used in combination 
-     * with <b>emissive()</b>, <b>specular()</b>, and <b>shininess()</b> in setting 
-     * the materal properties of shapes.
-     *
-     * @param {int | float} gray
-     *
-     * @returns none
-     *
-     * @see emissive
-     * @see specular
-     * @see shininess
+    * Sets the ambient reflectance for shapes drawn to the screen. This is 
+    * combined with the ambient light component of environment. The color 
+    * components set through the parameters define the reflectance. For example in 
+    * the default color mode, setting v1=255, v2=126, v3=0, would cause all the 
+    * red light to reflect and half of the green light to reflect. Used in combination 
+    * with <b>emissive()</b>, <b>specular()</b>, and <b>shininess()</b> in setting 
+    * the materal properties of shapes.
+    *
+    * @param {int | float} gray
+    *
+    * @returns none
+    *
+    * @see emissive
+    * @see specular
+    * @see shininess
     */
     p.ambient = function ambient() {
       // create an alias to shorten code
@@ -10029,49 +10104,49 @@
       // either a shade of gray or a 'color' object.
       if (p.use3DContext) {
         curContext.useProgram(programObject3D);
-        uniformi(programObject3D, "usingMat", true);
+        uniformi("usingMat3d", programObject3D, "usingMat", true);
 
         if (a.length === 1) {
           // color object was passed in
           if (typeof a[0] === "string") {
             var c = a[0].slice(5, -1).split(",");
-            uniformf(programObject3D, "mat_ambient", [c[0] / 255, c[1] / 255, c[2] / 255]);
+            uniformf("mat_ambient3d", programObject3D, "mat_ambient", [c[0] / 255, c[1] / 255, c[2] / 255]);
           }
           // else a single number was passed in for gray shade
           else {
-            uniformf(programObject3D, "mat_ambient", [a[0] / 255, a[0] / 255, a[0] / 255]);
+            uniformf("mat_ambient3d", programObject3D, "mat_ambient", [a[0] / 255, a[0] / 255, a[0] / 255]);
           }
         }
         // Otherwise three values were provided (r,g,b)
         else {
-          uniformf(programObject3D, "mat_ambient", [a[0] / 255, a[1] / 255, a[2] / 255]);
+          uniformf("mat_ambient3d", programObject3D, "mat_ambient", [a[0] / 255, a[1] / 255, a[2] / 255]);
         }
       }
     };
 
     /**
-     * Sets the emissive color of the material used for drawing shapes 
-     * drawn to the screen. Used in combination with ambient(), specular(), 
-     * and shininess() in setting the material properties of shapes.
-     *
-     * Can be called in the following ways:
-     *
-     * emissive(gray)
-     * @param {int | float} gray number specifying value between white and black 
-     *
-     * emissive(color)
-     * @param {color} color any value of the color datatype
-     *
-     * emissive(v1, v2, v3)
-     * @param {int | float} v1 red or hue value
-     * @param {int | float} v2 green or saturation value
-     * @param {int | float} v3 blue or brightness value
-     *     
-     * @returns none
-     *
-     * @see ambient
-     * @see specular
-     * @see shininess
+    * Sets the emissive color of the material used for drawing shapes 
+    * drawn to the screen. Used in combination with ambient(), specular(), 
+    * and shininess() in setting the material properties of shapes.
+    *
+    * Can be called in the following ways:
+    *
+    * emissive(gray)
+    * @param {int | float} gray number specifying value between white and black 
+    *
+    * emissive(color)
+    * @param {color} color any value of the color datatype
+    *
+    * emissive(v1, v2, v3)
+    * @param {int | float} v1 red or hue value
+    * @param {int | float} v2 green or saturation value
+    * @param {int | float} v3 blue or brightness value
+    *     
+    * @returns none
+    *
+    * @see ambient
+    * @see specular
+    * @see shininess
     */
     p.emissive = function emissive() {
       // create an alias to shorten code
@@ -10079,7 +10154,7 @@
 
       if (p.use3DContext) {
         curContext.useProgram(programObject3D);
-        uniformi(programObject3D, "usingMat", true);
+        uniformi("usingMat3d", programObject3D, "usingMat", true);
 
         // If only one argument was provided, the user either gave us a
         // shade of gray or a 'color' object.
@@ -10087,80 +10162,80 @@
           // color object was passed in
           if (typeof a[0] === "string") {
             var c = a[0].slice(5, -1).split(",");
-            uniformf(programObject3D, "mat_emissive", [c[0] / 255, c[1] / 255, c[2] / 255]);
+            uniformf("mat_emissive3d", programObject3D, "mat_emissive", [c[0] / 255, c[1] / 255, c[2] / 255]);
           }
           // else a regular number was passed in for gray shade
           else {
-            uniformf(programObject3D, "mat_emissive", [a[0] / 255, a[0] / 255, a[0] / 255]);
+            uniformf("mat_emissive3d", programObject3D, "mat_emissive", [a[0] / 255, a[0] / 255, a[0] / 255]);
           }
         }
         // Otherwise three values were provided (r,g,b)
         else {
-          uniformf(programObject3D, "mat_emissive", [a[0] / 255, a[1] / 255, a[2] / 255]);
+          uniformf("mat_emissive3d", programObject3D, "mat_emissive", [a[0] / 255, a[1] / 255, a[2] / 255]);
         }
       }
     };
 
     /**
-     * Sets the amount of gloss in the surface of shapes. Used in combination with 
-     * <b>ambient()</b>, <b>specular()</b>, and <b>emissive()</b> in setting the 
-     * material properties of shapes.
-     *
-     * @param {float} shine degree of shininess
-     *
-     * @returns none
+    * Sets the amount of gloss in the surface of shapes. Used in combination with 
+    * <b>ambient()</b>, <b>specular()</b>, and <b>emissive()</b> in setting the 
+    * material properties of shapes.
+    *
+    * @param {float} shine degree of shininess
+    *
+    * @returns none
     */
     p.shininess = function shininess(shine) {
       if (p.use3DContext) {
         curContext.useProgram(programObject3D);
-        uniformi(programObject3D, "usingMat", true);
-        uniformf(programObject3D, "shininess", shine);
+        uniformi("usingMat3d", programObject3D, "usingMat", true);
+        uniformf("shininess3d", programObject3D, "shininess", shine);
       }
     };
 
     /**
-     * Sets the specular color of the materials used for shapes drawn to the screen, 
-     * which sets the color of hightlights. Specular refers to light which bounces 
-     * off a surface in a perferred direction (rather than bouncing in all directions 
-     * like a diffuse light). Used in combination with emissive(), ambient(), and 
-     * shininess() in setting the material properties of shapes.
-     *
-     * Can be called in the following ways:
-     * 
-     * specular(gray)
-     * @param {int | float} gray number specifying value between white and black
-     *
-     * specular(gray, alpha)
-     * @param {int | float} gray number specifying value between white and black
-     * @param {int | float} alpha opacity
-     *
-     * specular(color)
-     * @param {color} color any value of the color datatype
-     *
-     * specular(v1, v2, v3)
-     * @param {int | float} v1 red or hue value
-     * @param {int | float} v2 green or saturation value
-     * @param {int | float} v3 blue or brightness value
-     *
-     * specular(v1, v2, v3, alpha)
-     * @param {int | float} v1 red or hue value
-     * @param {int | float} v2 green or saturation value
-     * @param {int | float} v3 blue or brightness value
-     * @param {int | float} alpha opacity
-     *
-     * @returns none
-     *
-     * @see ambient
-     * @see emissive
-     * @see shininess
+    * Sets the specular color of the materials used for shapes drawn to the screen, 
+    * which sets the color of hightlights. Specular refers to light which bounces 
+    * off a surface in a perferred direction (rather than bouncing in all directions 
+    * like a diffuse light). Used in combination with emissive(), ambient(), and 
+    * shininess() in setting the material properties of shapes.
+    *
+    * Can be called in the following ways:
+    * 
+    * specular(gray)
+    * @param {int | float} gray number specifying value between white and black
+    *
+    * specular(gray, alpha)
+    * @param {int | float} gray number specifying value between white and black
+    * @param {int | float} alpha opacity
+    *
+    * specular(color)
+    * @param {color} color any value of the color datatype
+    *
+    * specular(v1, v2, v3)
+    * @param {int | float} v1 red or hue value
+    * @param {int | float} v2 green or saturation value
+    * @param {int | float} v3 blue or brightness value
+    *
+    * specular(v1, v2, v3, alpha)
+    * @param {int | float} v1 red or hue value
+    * @param {int | float} v2 green or saturation value
+    * @param {int | float} v3 blue or brightness value
+    * @param {int | float} alpha opacity
+    *
+    * @returns none
+    *
+    * @see ambient
+    * @see emissive
+    * @see shininess
     */
     p.specular = function specular() {
       var c = p.color.apply(this, arguments);
 
       if (p.use3DContext) {
         curContext.useProgram(programObject3D);
-        uniformi(programObject3D, "usingMat", true);
-        uniformf(programObject3D, "mat_specular", p.color.toGLArray(c).slice(0, 3));
+        uniformi("usingMat3d", programObject3D, "usingMat", true);
+        uniformf("mat_specular3d", programObject3D, "mat_specular", p.color.toGLArray(c).slice(0, 3));
       }
     };
 
@@ -10169,17 +10244,17 @@
     ////////////////////////////////////////////////////////////////////////////
     
     /**
-     * Takes a three-dimensional X, Y, Z position and returns the X value for 
-     * where it will appear on a (two-dimensional) screen.
-     *
-     * @param {int | float} x 3D x coordinate to be mapped
-     * @param {int | float} y 3D y coordinate to be mapped
-     * @param {int | float} z 3D z coordinate to be mapped
-     *
-     * @returns {float}
-     *
-     * @see screenY
-     * @see screenZ
+    * Takes a three-dimensional X, Y, Z position and returns the X value for 
+    * where it will appear on a (two-dimensional) screen.
+    *
+    * @param {int | float} x 3D x coordinate to be mapped
+    * @param {int | float} y 3D y coordinate to be mapped
+    * @param {int | float} z 3D z coordinate to be mapped
+    *
+    * @returns {float}
+    *
+    * @see screenY
+    * @see screenZ
     */
     p.screenX = function screenX( x, y, z ) {
       var mv = modelView.array();
@@ -10200,17 +10275,17 @@
     };
 
     /**
-     * Takes a three-dimensional X, Y, Z position and returns the Y value for 
-     * where it will appear on a (two-dimensional) screen.
-     *
-     * @param {int | float} x 3D x coordinate to be mapped
-     * @param {int | float} y 3D y coordinate to be mapped
-     * @param {int | float} z 3D z coordinate to be mapped
-     *
-     * @returns {float}
-     *
-     * @see screenX
-     * @see screenZ
+    * Takes a three-dimensional X, Y, Z position and returns the Y value for 
+    * where it will appear on a (two-dimensional) screen.
+    *
+    * @param {int | float} x 3D x coordinate to be mapped
+    * @param {int | float} y 3D y coordinate to be mapped
+    * @param {int | float} z 3D z coordinate to be mapped
+    *
+    * @returns {float}
+    *
+    * @see screenX
+    * @see screenZ
     */
     p.screenY = function screenY( x, y, z ) {
       var mv = modelView.array();
@@ -10231,17 +10306,17 @@
     };
 
     /**
-     * Takes a three-dimensional X, Y, Z position and returns the Z value for 
-     * where it will appear on a (two-dimensional) screen.
-     *
-     * @param {int | float} x 3D x coordinate to be mapped
-     * @param {int | float} y 3D y coordinate to be mapped
-     * @param {int | float} z 3D z coordinate to be mapped
-     *
-     * @returns {float}
-     *
-     * @see screenX
-     * @see screenY
+    * Takes a three-dimensional X, Y, Z position and returns the Z value for 
+    * where it will appear on a (two-dimensional) screen.
+    *
+    * @param {int | float} x 3D x coordinate to be mapped
+    * @param {int | float} y 3D y coordinate to be mapped
+    * @param {int | float} z 3D z coordinate to be mapped
+    *
+    * @returns {float}
+    *
+    * @see screenX
+    * @see screenY
     */
     p.screenZ = function screenZ( x, y, z ) {
       var mv = modelView.array();
@@ -10265,29 +10340,29 @@
     // Style functions
     ////////////////////////////////////////////////////////////////////////////
     /**
-     * The fill() function sets the color used to fill shapes. For example, if you run <b>fill(204, 102, 0)</b>, all subsequent shapes will be filled with orange. 
-     * This color is either specified in terms of the RGB or HSB color depending on the current <b>colorMode()</b> 
-     *(the default color space is RGB, with each value in the range from 0 to 255).
-     * <br><br>When using hexadecimal notation to specify a color, use "#" or "0x" before the values (e.g. #CCFFAA, 0xFFCCFFAA). 
-     * The # syntax uses six digits to specify a color (the way colors are specified in HTML and CSS). When using the hexadecimal notation starting with "0x", 
-     * the hexadecimal value must be specified with eight characters; the first two characters define the alpha component and the remainder the red, green, and blue components.
-     * <br><br>The value for the parameter "gray" must be less than or equal to the current maximum value as specified by <b>colorMode()</b>. The default maximum value is 255.
-     * <br><br>To change the color of an image (or a texture), use tint().
-     *
-     * @param {int|float} gray    number specifying value between white and black
-     * @param {int|float} value1  red or hue value
-     * @param {int|float} value2  green or saturation value
-     * @param {int|float} value3  blue or brightness value
-     * @param {int|float} alpha   opacity of the fill
-     * @param {Color} color       any value of the color datatype
-     * @param {int} hex           color value in hexadecimal notation (i.e. #FFCC00 or 0xFFFFCC00)
-     *
-     * @see #noFill()
-     * @see #stroke()
-     * @see #tint()
-     * @see #background()
-     * @see #colorMode()
-     */
+    * The fill() function sets the color used to fill shapes. For example, if you run <b>fill(204, 102, 0)</b>, all subsequent shapes will be filled with orange. 
+    * This color is either specified in terms of the RGB or HSB color depending on the current <b>colorMode()</b> 
+    *(the default color space is RGB, with each value in the range from 0 to 255).
+    * <br><br>When using hexadecimal notation to specify a color, use "#" or "0x" before the values (e.g. #CCFFAA, 0xFFCCFFAA). 
+    * The # syntax uses six digits to specify a color (the way colors are specified in HTML and CSS). When using the hexadecimal notation starting with "0x", 
+    * the hexadecimal value must be specified with eight characters; the first two characters define the alpha component and the remainder the red, green, and blue components.
+    * <br><br>The value for the parameter "gray" must be less than or equal to the current maximum value as specified by <b>colorMode()</b>. The default maximum value is 255.
+    * <br><br>To change the color of an image (or a texture), use tint().
+    *
+    * @param {int|float} gray    number specifying value between white and black
+    * @param {int|float} value1  red or hue value
+    * @param {int|float} value2  green or saturation value
+    * @param {int|float} value3  blue or brightness value
+    * @param {int|float} alpha   opacity of the fill
+    * @param {Color} color       any value of the color datatype
+    * @param {int} hex           color value in hexadecimal notation (i.e. #FFCC00 or 0xFFFFCC00)
+    *
+    * @see #noFill()
+    * @see #stroke()
+    * @see #tint()
+    * @see #background()
+    * @see #colorMode()
+    */
     p.fill = function fill() {
       var color = p.color(arguments[0], arguments[1], arguments[2], arguments[3]);
       if(color === currentFillColor && doFill) {
@@ -10314,46 +10389,46 @@
     }
 
     /**
-     * The noFill() function disables filling geometry. If both <b>noStroke()</b> and <b>noFill()</b>
-     * are called, no shapes will be drawn to the screen.
-     *
-     * @see #fill()
-     *
-     */
+    * The noFill() function disables filling geometry. If both <b>noStroke()</b> and <b>noFill()</b>
+    * are called, no shapes will be drawn to the screen.
+    *
+    * @see #fill()
+    *
+    */
     p.noFill = function noFill() {
       doFill = false;
     };
 
     /**
-     * The stroke() function sets the color used to draw lines and borders around shapes. This color
-     * is either specified in terms of the RGB or HSB color depending on the
-     * current <b>colorMode()</b> (the default color space is RGB, with each
-     * value in the range from 0 to 255).
-     * <br><br>When using hexadecimal notation to specify a color, use "#" or
-     * "0x" before the values (e.g. #CCFFAA, 0xFFCCFFAA). The # syntax uses six
-     * digits to specify a color (the way colors are specified in HTML and CSS).
-     * When using the hexadecimal notation starting with "0x", the hexadecimal
-     * value must be specified with eight characters; the first two characters
-     * define the alpha component and the remainder the red, green, and blue
-     * components.
-     * <br><br>The value for the parameter "gray" must be less than or equal
-     * to the current maximum value as specified by <b>colorMode()</b>.
-     * The default maximum value is 255.
-     *
-     * @param {int|float} gray    number specifying value between white and black
-     * @param {int|float} value1  red or hue value
-     * @param {int|float} value2  green or saturation value
-     * @param {int|float} value3  blue or brightness value
-     * @param {int|float} alpha   opacity of the stroke
-     * @param {Color} color       any value of the color datatype
-     * @param {int} hex           color value in hexadecimal notation (i.e. #FFCC00 or 0xFFFFCC00)
-     *
-     * @see #fill()
-     * @see #noStroke()
-     * @see #tint()
-     * @see #background()
-     * @see #colorMode()
-     */
+    * The stroke() function sets the color used to draw lines and borders around shapes. This color
+    * is either specified in terms of the RGB or HSB color depending on the
+    * current <b>colorMode()</b> (the default color space is RGB, with each
+    * value in the range from 0 to 255).
+    * <br><br>When using hexadecimal notation to specify a color, use "#" or
+    * "0x" before the values (e.g. #CCFFAA, 0xFFCCFFAA). The # syntax uses six
+    * digits to specify a color (the way colors are specified in HTML and CSS).
+    * When using the hexadecimal notation starting with "0x", the hexadecimal
+    * value must be specified with eight characters; the first two characters
+    * define the alpha component and the remainder the red, green, and blue
+    * components.
+    * <br><br>The value for the parameter "gray" must be less than or equal
+    * to the current maximum value as specified by <b>colorMode()</b>.
+    * The default maximum value is 255.
+    *
+    * @param {int|float} gray    number specifying value between white and black
+    * @param {int|float} value1  red or hue value
+    * @param {int|float} value2  green or saturation value
+    * @param {int|float} value3  blue or brightness value
+    * @param {int|float} alpha   opacity of the stroke
+    * @param {Color} color       any value of the color datatype
+    * @param {int} hex           color value in hexadecimal notation (i.e. #FFCC00 or 0xFFFFCC00)
+    *
+    * @see #fill()
+    * @see #noStroke()
+    * @see #tint()
+    * @see #background()
+    * @see #colorMode()
+    */
     p.stroke = function stroke() {
       var color = p.color(arguments[0], arguments[1], arguments[2], arguments[3]);
       if(color === currentStrokeColor && doStroke) {
@@ -10380,63 +10455,63 @@
     }
 
     /**
-     * The noStroke() function disables drawing the stroke (outline). If both <b>noStroke()</b> and
-     * <b>noFill()</b> are called, no shapes will be drawn to the screen.
-     *
-     * @see #stroke()
-     */
+    * The noStroke() function disables drawing the stroke (outline). If both <b>noStroke()</b> and
+    * <b>noFill()</b> are called, no shapes will be drawn to the screen.
+    *
+    * @see #stroke()
+    */
     p.noStroke = function noStroke() {
       doStroke = false;
     };
 
     /**
-     * The strokeWeight() function sets the width of the stroke used for lines, points, and the border around shapes. 
-     * All widths are set in units of pixels. 
-     *
-     * @param {int|float} w the weight (in pixels) of the stroke
-     */
+    * The strokeWeight() function sets the width of the stroke used for lines, points, and the border around shapes. 
+    * All widths are set in units of pixels. 
+    *
+    * @param {int|float} w the weight (in pixels) of the stroke
+    */
     p.strokeWeight = function strokeWeight(w) {
       lineWidth = w;
 
       if (p.use3DContext) {
         curContext.useProgram(programObject2D);
-        uniformf(programObject2D, "pointSize", w);
+        uniformf("pointSize2d", programObject2D, "pointSize", w);
       } else {
         curContext.lineWidth = w;
       }
     };
 
     /**
-     * The strokeCap() function sets the style for rendering line endings. These ends are either squared, extended, or rounded and 
-     * specified with the corresponding parameters SQUARE, PROJECT, and ROUND. The default cap is ROUND. 
-     * This function is not available with the P2D, P3D, or OPENGL renderers
-     *
-     * @param {int} value Either SQUARE, PROJECT, or ROUND
-     */
+    * The strokeCap() function sets the style for rendering line endings. These ends are either squared, extended, or rounded and 
+    * specified with the corresponding parameters SQUARE, PROJECT, and ROUND. The default cap is ROUND. 
+    * This function is not available with the P2D, P3D, or OPENGL renderers
+    *
+    * @param {int} value Either SQUARE, PROJECT, or ROUND
+    */
     p.strokeCap = function strokeCap(value) {
       curContext.lineCap = value;
     };
 
     /**
-     * The strokeJoin() function sets the style of the joints which connect line segments. 
-     * These joints are either mitered, beveled, or rounded and specified with the corresponding parameters MITER, BEVEL, and ROUND. The default joint is MITER. 
-     * This function is not available with the P2D, P3D, or OPENGL renderers
-     *
-     * @param {int} value Either SQUARE, PROJECT, or ROUND
-     */
+    * The strokeJoin() function sets the style of the joints which connect line segments. 
+    * These joints are either mitered, beveled, or rounded and specified with the corresponding parameters MITER, BEVEL, and ROUND. The default joint is MITER. 
+    * This function is not available with the P2D, P3D, or OPENGL renderers
+    *
+    * @param {int} value Either SQUARE, PROJECT, or ROUND
+    */
     p.strokeJoin = function strokeJoin(value) {
       curContext.lineJoin = value;
     };
 
     /**
-     * The smooth() function draws all geometry with smooth (anti-aliased) edges. This will slow down the frame rate of the application, 
-     * but will enhance the visual refinement. <br/><br/>
-     * Note that smooth() will also improve image quality of resized images, and noSmooth() will disable image (and font) smoothing altogether. 
-     *
-     * @see #noSmooth()
-     * @see #hint()
-     * @see #size()
-     */
+    * The smooth() function draws all geometry with smooth (anti-aliased) edges. This will slow down the frame rate of the application, 
+    * but will enhance the visual refinement. <br/><br/>
+    * Note that smooth() will also improve image quality of resized images, and noSmooth() will disable image (and font) smoothing altogether. 
+    *
+    * @see #noSmooth()
+    * @see #hint()
+    * @see #size()
+    */
     p.smooth = function() {
       curElement.style.setProperty("image-rendering", "optimizeQuality", "important");
       if (!p.use3DContext && "mozImageSmoothingEnabled" in curContext) {
@@ -10445,10 +10520,10 @@
     };
 
     /**
-     * The noSmooth() function draws all geometry with jagged (aliased) edges.
-     * 
-     * @see #smooth()
-     */
+    * The noSmooth() function draws all geometry with jagged (aliased) edges.
+    * 
+    * @see #smooth()
+    */
     p.noSmooth = function() {
       curElement.style.setProperty("image-rendering", "optimizeSpeed", "important");
       if (!p.use3DContext && "mozImageSmoothingEnabled" in curContext) {
@@ -10469,19 +10544,19 @@
     }
 
     /**
-     * The point() function draws a point, a coordinate in space at the dimension of one pixel.
-     * The first parameter is the horizontal value for the point, the second
-     * value is the vertical value for the point, and the optional third value
-     * is the depth value. Drawing this shape in 3D using the <b>z</b>
-     * parameter requires the P3D or OPENGL parameter in combination with
-     * size as shown in the above example.
-     *
-     * @param {int|float} x x-coordinate of the point
-     * @param {int|float} y y-coordinate of the point
-     * @param {int|float} z z-coordinate of the point
-     *
-     * @see #beginShape()
-     */
+    * The point() function draws a point, a coordinate in space at the dimension of one pixel.
+    * The first parameter is the horizontal value for the point, the second
+    * value is the vertical value for the point, and the optional third value
+    * is the depth value. Drawing this shape in 3D using the <b>z</b>
+    * parameter requires the P3D or OPENGL parameter in combination with
+    * size as shown in the above example.
+    *
+    * @param {int|float} x x-coordinate of the point
+    * @param {int|float} y y-coordinate of the point
+    * @param {int|float} z z-coordinate of the point
+    *
+    * @see #beginShape()
+    */
     p.point = function point(x, y, z) {
       if (p.use3DContext) {
         var model = new PMatrix3D();
@@ -10500,17 +10575,17 @@
         proj.transpose();
 
         curContext.useProgram(programObject2D);
-        uniformMatrix(programObject2D, "model", false, model.array());
-        uniformMatrix(programObject2D, "view", false, view.array());
-        uniformMatrix(programObject2D, "projection", false, proj.array());
+        uniformMatrix("model2d", programObject2D, "model", false, model.array());
+        uniformMatrix("view2d", programObject2D, "view", false, view.array());
+        uniformMatrix("projection2d", programObject2D, "projection", false, proj.array());
 
         if (lineWidth > 0 && doStroke) {
           // this will be replaced with the new bit shifting color code
-          uniformf(programObject2D, "color", strokeStyle);
-          uniformi(programObject2D, "picktype", 0);
+          uniformf("color2d", programObject2D, "color", strokeStyle);
+          uniformi("picktype2d", programObject2D, "picktype", 0);
 
-          vertexAttribPointer(programObject2D, "Vertex", 3, pointBuffer);
-          disableVertexAttribPointer(programObject2D, "aTextureCoord");
+          vertexAttribPointer("vertex2d", programObject2D, "Vertex", 3, pointBuffer);
+          disableVertexAttribPointer("aTextureCoord2d", programObject2D, "aTextureCoord");
 
           curContext.drawArrays(curContext.POINTS, 0, 1);
         }
@@ -10541,22 +10616,22 @@
     };
 
     /**
-     * Using the <b>beginShape()</b> and <b>endShape()</b> functions allow creating more complex forms. 
-     * <b>beginShape()</b> begins recording vertices for a shape and <b>endShape()</b> stops recording.
-     * The value of the <b>MODE</b> parameter tells it which types of shapes to create from the provided vertices.
-     * With no mode specified, the shape can be any irregular polygon. After calling the <b>beginShape()</b> function,
-     * a series of <b>vertex()</b> commands must follow. To stop drawing the shape, call <b>endShape()</b>.
-     * The <b>vertex()</b> function with two parameters specifies a position in 2D and the <b>vertex()</b>
-     * function with three parameters specifies a position in 3D. Each shape will be outlined with the current
-     * stroke color and filled with the fill color. 
-     *
-     * @param {int} MODE either POINTS, LINES, TRIANGLES, TRIANGLE_FAN, TRIANGLE_STRIP, QUADS, and QUAD_STRIP.
-     *
-     * @see endShape
-     * @see vertex
-     * @see curveVertex
-     * @see bezierVertex
-     */
+    * Using the <b>beginShape()</b> and <b>endShape()</b> functions allow creating more complex forms. 
+    * <b>beginShape()</b> begins recording vertices for a shape and <b>endShape()</b> stops recording.
+    * The value of the <b>MODE</b> parameter tells it which types of shapes to create from the provided vertices.
+    * With no mode specified, the shape can be any irregular polygon. After calling the <b>beginShape()</b> function,
+    * a series of <b>vertex()</b> commands must follow. To stop drawing the shape, call <b>endShape()</b>.
+    * The <b>vertex()</b> function with two parameters specifies a position in 2D and the <b>vertex()</b>
+    * function with three parameters specifies a position in 3D. Each shape will be outlined with the current
+    * stroke color and filled with the fill color. 
+    *
+    * @param {int} MODE either POINTS, LINES, TRIANGLES, TRIANGLE_FAN, TRIANGLE_STRIP, QUADS, and QUAD_STRIP.
+    *
+    * @see endShape
+    * @see vertex
+    * @see curveVertex
+    * @see bezierVertex
+    */
     p.beginShape = function beginShape(type) {
       curShape = type;
       curvePoints = [];
@@ -10564,27 +10639,27 @@
     };
 
     /**
-     * All shapes are constructed by connecting a series of vertices. <b>vertex()</b> is used to specify the vertex
-     * coordinates for points, lines, triangles, quads, and polygons and is used exclusively within the <b>beginShape()</b>
-     * and <b>endShape()</b> function. <br /><br />Drawing a vertex in 3D using the <b>z</b> parameter requires the P3D or
-     * OPENGL parameter in combination with size as shown in the above example.<br /><br />This function is also used to map a
-     * texture onto the geometry. The <b>texture()</b> function declares the texture to apply to the geometry and the <b>u</b>
-     * and <b>v</b> coordinates set define the mapping of this texture to the form. By default, the coordinates used for
-     * <b>u</b> and <b>v</b> are specified in relation to the image's size in pixels, but this relation can be changed with
-     * <b>textureMode()</b>.
-     *
-     * @param {int | float} x x-coordinate of the vertex
-     * @param {int | float} y y-coordinate of the vertex
-     * @param {int | float} z z-coordinate of the vertex
-     * @param {int | float} u horizontal coordinate for the texture mapping
-     * @param {int | float} v vertical coordinate for the texture mapping
-     *
-     * @see beginShape
-     * @see endShape
-     * @see bezierVertex
-     * @see curveVertex
-     * @see texture
-     */
+    * All shapes are constructed by connecting a series of vertices. <b>vertex()</b> is used to specify the vertex
+    * coordinates for points, lines, triangles, quads, and polygons and is used exclusively within the <b>beginShape()</b>
+    * and <b>endShape()</b> function. <br /><br />Drawing a vertex in 3D using the <b>z</b> parameter requires the P3D or
+    * OPENGL parameter in combination with size as shown in the above example.<br /><br />This function is also used to map a
+    * texture onto the geometry. The <b>texture()</b> function declares the texture to apply to the geometry and the <b>u</b>
+    * and <b>v</b> coordinates set define the mapping of this texture to the form. By default, the coordinates used for
+    * <b>u</b> and <b>v</b> are specified in relation to the image's size in pixels, but this relation can be changed with
+    * <b>textureMode()</b>.
+    *
+    * @param {int | float} x x-coordinate of the vertex
+    * @param {int | float} y y-coordinate of the vertex
+    * @param {int | float} z z-coordinate of the vertex
+    * @param {int | float} u horizontal coordinate for the texture mapping
+    * @param {int | float} v vertical coordinate for the texture mapping
+    *
+    * @see beginShape
+    * @see endShape
+    * @see bezierVertex
+    * @see curveVertex
+    * @see texture
+    */
     p.vertex = function vertex() {
       var vert = [];
 
@@ -10631,16 +10706,16 @@
     };
 
     /**
-     * @private
-     * Renders 3D points created from calls to vertex and beginShape/endShape
-     * 
-     * @param {Array} vArray an array of vertex coordinate
-     * @param {Array} cArray an array of colours used for the vertices
-     *
-     * @see beginShape
-     * @see endShape
-     * @see vertex
-     */
+    * @private
+    * Renders 3D points created from calls to vertex and beginShape/endShape
+    * 
+    * @param {Array} vArray an array of vertex coordinate
+    * @param {Array} cArray an array of colours used for the vertices
+    *
+    * @see beginShape
+    * @see endShape
+    * @see vertex
+    */
     var point3D = function point3D(vArray, cArray){
       var view = new PMatrix3D();
       view.scale(1, -1, 1);
@@ -10652,30 +10727,30 @@
       proj.transpose();
 
       curContext.useProgram(programObjectUnlitShape);
-      uniformMatrix(programObjectUnlitShape, "uView", false, view.array());
-      uniformMatrix(programObjectUnlitShape, "uProjection", false, proj.array());
+      uniformMatrix("uViewUS", programObjectUnlitShape, "uView", false, view.array());
+      uniformMatrix("uProjectionUS", programObjectUnlitShape, "uProjection", false, proj.array());
 
-      vertexAttribPointer(programObjectUnlitShape, "aVertex", 3, pointBuffer);
+      vertexAttribPointer("aVertexUS", programObjectUnlitShape, "aVertex", 3, pointBuffer);
       curContext.bufferData(curContext.ARRAY_BUFFER, new Float32Array(vArray), curContext.STREAM_DRAW);
 
-      vertexAttribPointer(programObjectUnlitShape, "aColor", 4, fillColorBuffer);
+      vertexAttribPointer("aColorUS", programObjectUnlitShape, "aColor", 4, fillColorBuffer);
       curContext.bufferData(curContext.ARRAY_BUFFER, new Float32Array(cArray), curContext.STREAM_DRAW);
 
       curContext.drawArrays(curContext.POINTS, 0, vArray.length/3);
     };
 
     /**
-     * @private
-     * Renders 3D lines created from calls to beginShape/vertex/endShape - based on the mode specified LINES, LINE_LOOP, etc.
-     * 
-     * @param {Array} vArray an array of vertex coordinate
-     * @param {String} mode  either LINES, LINE_LOOP, or LINE_STRIP
-     * @param {Array} cArray an array of colours used for the vertices
-     *
-     * @see beginShape
-     * @see endShape
-     * @see vertex
-     */
+    * @private
+    * Renders 3D lines created from calls to beginShape/vertex/endShape - based on the mode specified LINES, LINE_LOOP, etc.
+    * 
+    * @param {Array} vArray an array of vertex coordinate
+    * @param {String} mode  either LINES, LINE_LOOP, or LINE_STRIP
+    * @param {Array} cArray an array of colours used for the vertices
+    *
+    * @see beginShape
+    * @see endShape
+    * @see vertex
+    */
     var line3D = function line3D(vArray, mode, cArray){
       var ctxMode;
       if (mode === "LINES"){
@@ -10698,13 +10773,13 @@
       proj.transpose();
 
       curContext.useProgram(programObjectUnlitShape);
-      uniformMatrix(programObjectUnlitShape, "uView", false, view.array());
-      uniformMatrix(programObjectUnlitShape, "uProjection", false, proj.array());
+      uniformMatrix("uViewUS", programObjectUnlitShape, "uView", false, view.array());
+      uniformMatrix("uProjectionUS", programObjectUnlitShape, "uProjection", false, proj.array());
 
-      vertexAttribPointer(programObjectUnlitShape, "aVertex", 3, lineBuffer);
+      vertexAttribPointer("aVertexUS", programObjectUnlitShape, "aVertex", 3, lineBuffer);
       curContext.bufferData(curContext.ARRAY_BUFFER, new Float32Array(vArray), curContext.STREAM_DRAW);
 
-      vertexAttribPointer(programObjectUnlitShape, "aColor", 4, strokeColorBuffer);
+      vertexAttribPointer("aColorUS", programObjectUnlitShape, "aColor", 4, strokeColorBuffer);
       curContext.bufferData(curContext.ARRAY_BUFFER, new Float32Array(cArray), curContext.STREAM_DRAW);
 
       curContext.lineWidth(lineWidth);
@@ -10713,18 +10788,18 @@
     };
 
     /**
-     * @private
-     * Render filled shapes created from calls to beginShape/vertex/endShape - based on the mode specified TRIANGLES, etc.
-     * 
-     * @param {Array} vArray an array of vertex coordinate
-     * @param {String} mode  either LINES, LINE_LOOP, or LINE_STRIP
-     * @param {Array} cArray an array of colours used for the vertices
-     * @param {Array} tArray an array of u,v coordinates for textures
-     *
-     * @see beginShape
-     * @see endShape
-     * @see vertex
-     */
+    * @private
+    * Render filled shapes created from calls to beginShape/vertex/endShape - based on the mode specified TRIANGLES, etc.
+    * 
+    * @param {Array} vArray an array of vertex coordinate
+    * @param {String} mode  either LINES, LINE_LOOP, or LINE_STRIP
+    * @param {Array} cArray an array of colours used for the vertices
+    * @param {Array} tArray an array of u,v coordinates for textures
+    *
+    * @see beginShape
+    * @see endShape
+    * @see vertex
+    */
     var fill3D = function fill3D(vArray, mode, cArray, tArray){
       var ctxMode;
       if(mode === "TRIANGLES"){
@@ -10747,23 +10822,23 @@
       proj.transpose();
 
       curContext.useProgram( programObject3D );
-      uniformMatrix( programObject3D, "model", false,  [1,0,0,0,  0,1,0,0,   0,0,1,0,   0,0,0,1] );
-      uniformMatrix( programObject3D, "view", false, view.array() );
-      uniformMatrix( programObject3D, "projection", false, proj.array() );
+      uniformMatrix("model3d", programObject3D, "model", false,  [1,0,0,0,  0,1,0,0,   0,0,1,0,   0,0,0,1] );
+      uniformMatrix("view3d", programObject3D, "view", false, view.array() );
+      uniformMatrix("projection3d", programObject3D, "projection", false, proj.array() );
 
       curContext.enable( curContext.POLYGON_OFFSET_FILL );
       curContext.polygonOffset( 1, 1 );
 
-      uniformf(programObject3D, "color", [-1,0,0,0]);
+      uniformf("color3d", programObject3D, "color", [-1,0,0,0]);
 
-      vertexAttribPointer(programObject3D, "Vertex", 3, fillBuffer);
+      vertexAttribPointer("vertex3d", programObject3D, "Vertex", 3, fillBuffer);
       curContext.bufferData(curContext.ARRAY_BUFFER, new Float32Array(vArray), curContext.STREAM_DRAW);
 
-      vertexAttribPointer(programObject3D, "aColor", 4, fillColorBuffer);
+      vertexAttribPointer("aColor3d", programObject3D, "aColor", 4, fillColorBuffer);
       curContext.bufferData(curContext.ARRAY_BUFFER, new Float32Array(cArray), curContext.STREAM_DRAW);
 
       // No support for lights....yet
-      disableVertexAttribPointer(programObject3D, "Normal");
+      disableVertexAttribPointer("normal3d", programObject3D, "Normal");
 
       var i;
 
@@ -10782,8 +10857,8 @@
           if( tArray[i+1] > 1.0 ){ tArray[i+1] -= (tArray[i+1] - 1.0);}
         }
 
-        uniformi(programObject3D, "usingTexture", usingTexture);
-        vertexAttribPointer(programObject3D, "aTexture", 2, shapeTexVBO);
+        uniformi("usingTexture3d", programObject3D, "usingTexture", usingTexture);
+        vertexAttribPointer("aTexture3d", programObject3D, "aTexture", 2, shapeTexVBO);
         curContext.bufferData(curContext.ARRAY_BUFFER, new Float32Array(tArray), curContext.STREAM_DRAW);
       }
 
@@ -10792,14 +10867,14 @@
     };
 
     /**
-     * The endShape() function is the companion to beginShape() and may only be called after beginShape().
-     * When endshape() is called, all of image data defined since the previous call to beginShape() is written
-     * into the image buffer. 
-     *
-     * @param {int} MODE Use CLOSE to close the shape
-     *
-     * @see beginShape
-     */
+    * The endShape() function is the companion to beginShape() and may only be called after beginShape().
+    * When endshape() is called, all of image data defined since the previous call to beginShape() is written
+    * into the image buffer. 
+    *
+    * @param {int} MODE Use CLOSE to close the shape
+    *
+    * @see beginShape
+    */
     p.endShape = function endShape(mode){
       var closeShape = mode === PConstants.CLOSE;
       var lineVertArray = [];
@@ -11257,9 +11332,10 @@
           // with a color.
           usingTexture = false;
           curContext.useProgram(programObject3D);
-          uniformi(programObject3D, "usingTexture", usingTexture);
-          
-        } else { // in 2D context
+          uniformi("usingTexture3d", programObject3D, "usingTexture", usingTexture);
+        }
+        // 2D context
+        else {
           if (curShape === PConstants.POINTS) {
             for (i = 0; i < vertArray.length; i++) {
               if (doStroke) {
@@ -11429,15 +11505,15 @@
     };
 
     /**
-     * The function splineForward() setup forward-differencing matrix to be used for speedy
-     * curve rendering. It's based on using a specific number
-     * of curve segments and just doing incremental adds for each
-     * vertex of the segment, rather than running the mathematically
-     * expensive cubic equation. This function is used by both curveDetail and bezierDetail.
-     *
-     * @param {int} segments      number of curve segments to use when drawing
-     * @param {PMatrix3D} matrix  target object for the new matrix
-     */
+    * The function splineForward() setup forward-differencing matrix to be used for speedy
+    * curve rendering. It's based on using a specific number
+    * of curve segments and just doing incremental adds for each
+    * vertex of the segment, rather than running the mathematically
+    * expensive cubic equation. This function is used by both curveDetail and bezierDetail.
+    *
+    * @param {int} segments      number of curve segments to use when drawing
+    * @param {PMatrix3D} matrix  target object for the new matrix
+    */
     var splineForward = function(segments, matrix) {
       var f = 1.0 / segments;
       var ff = f * f;
@@ -11447,12 +11523,12 @@
     };
 
     /**
-     * The curveInit() function set the number of segments to use when drawing a Catmull-Rom
-     * curve, and setting the s parameter, which defines how tightly
-     * the curve fits to each vertex. Catmull-Rom curves are actually
-     * a subset of this curve type where the s is set to zero.
-     * This in an internal function used by curveDetail() and curveTightness().
-     */
+    * The curveInit() function set the number of segments to use when drawing a Catmull-Rom
+    * curve, and setting the s parameter, which defines how tightly
+    * the curve fits to each vertex. Catmull-Rom curves are actually
+    * a subset of this curve type where the s is set to zero.
+    * This in an internal function used by curveDetail() and curveTightness().
+    */
     var curveInit = function() {
       // allocate only if/when used to save startup time
       if (!curveDrawMatrix) {
@@ -11462,10 +11538,9 @@
       }
 
       var s = curTightness;
-      curveBasisMatrix.set(((s - 1) / 2).toFixed(2), ((s + 3) / 2).toFixed(2),
-                           ((-3 - s) / 2).toFixed(2), ((1 - s) / 2).toFixed(2),
-                           (1 - s), ((-5 - s) / 2).toFixed(2), (s + 2), ((s - 1) / 2).toFixed(2),
-                           ((s - 1) / 2).toFixed(2), 0, ((1 - s) / 2).toFixed(2), 0, 0, 1, 0, 0);
+      curveBasisMatrix.set((s - 1) / 2, (s + 3) / 2, (-3 - s) / 2, (1 - s) / 2,
+                           (1 - s), (-5 - s) / 2, (s + 2), (s - 1) / 2,
+                           (s - 1) / 2, 0, (1 - s) / 2, 0, 0, 1, 0, 0);
 
       splineForward(curveDet, curveDrawMatrix);
 
@@ -11487,27 +11562,27 @@
     };
 
     /**
-     * Specifies vertex coordinates for Bezier curves. Each call to <b>bezierVertex()</b> defines the position of two control
-     * points and one anchor point of a Bezier curve, adding a new segment to a line or shape. The first time
-     * <b>bezierVertex()</b> is used within a <b>beginShape()</b> call, it must be prefaced with a call to <b>vertex()</b>
-     * to set the first anchor point. This function must be used between <b>beginShape()</b> and <b>endShape()</b> and only
-     * when there is no MODE parameter specified to <b>beginShape()</b>. Using the 3D version of requires rendering with P3D
-     * or OPENGL (see the Environment reference for more information). <br /> <br /> <b>NOTE: </b> Fill does not work properly yet.
-     *
-     * @param {float | int} cx1 The x-coordinate of 1st control point
-     * @param {float | int} cy1 The y-coordinate of 1st control point
-     * @param {float | int} cz1 The z-coordinate of 1st control point
-     * @param {float | int} cx2 The x-coordinate of 2nd control point
-     * @param {float | int} cy2 The y-coordinate of 2nd control point
-     * @param {float | int} cz2 The z-coordinate of 2nd control point
-     * @param {float | int} x   The x-coordinate of the anchor point
-     * @param {float | int} y   The y-coordinate of the anchor point
-     * @param {float | int} z   The z-coordinate of the anchor point
-     *
-     * @see curveVertex
-     * @see vertex
-     * @see bezier
-     */
+    * Specifies vertex coordinates for Bezier curves. Each call to <b>bezierVertex()</b> defines the position of two control
+    * points and one anchor point of a Bezier curve, adding a new segment to a line or shape. The first time
+    * <b>bezierVertex()</b> is used within a <b>beginShape()</b> call, it must be prefaced with a call to <b>vertex()</b>
+    * to set the first anchor point. This function must be used between <b>beginShape()</b> and <b>endShape()</b> and only
+    * when there is no MODE parameter specified to <b>beginShape()</b>. Using the 3D version of requires rendering with P3D
+    * or OPENGL (see the Environment reference for more information). <br /> <br /> <b>NOTE: </b> Fill does not work properly yet.
+    *
+    * @param {float | int} cx1 The x-coordinate of 1st control point
+    * @param {float | int} cy1 The y-coordinate of 1st control point
+    * @param {float | int} cz1 The z-coordinate of 1st control point
+    * @param {float | int} cx2 The x-coordinate of 2nd control point
+    * @param {float | int} cy2 The y-coordinate of 2nd control point
+    * @param {float | int} cz2 The z-coordinate of 2nd control point
+    * @param {float | int} x   The x-coordinate of the anchor point
+    * @param {float | int} y   The y-coordinate of the anchor point
+    * @param {float | int} z   The z-coordinate of the anchor point
+    *
+    * @see curveVertex
+    * @see vertex
+    * @see bezier
+    */
     p.bezierVertex = function bezierVertex() {
       isBezier = true;
       var vert = [];
@@ -11576,21 +11651,21 @@
     };
 
     /**
-     * Sets a texture to be applied to vertex points. The <b>texture()</b> function 
-     * must be called between <b>beginShape()</b> and <b>endShape()</b> and before 
-     * any calls to vertex().
-     *
-     * When textures are in use, the fill color is ignored. Instead, use tint() to 
-     * specify the color of the texture as it is applied to the shape.
-     *
-     * @param {PImage} pimage the texture to apply
-     *
-     * @returns none
-     *
-     * @see textureMode
-     * @see beginShape
-     * @see endShape
-     * @see vertex
+    * Sets a texture to be applied to vertex points. The <b>texture()</b> function 
+    * must be called between <b>beginShape()</b> and <b>endShape()</b> and before 
+    * any calls to vertex().
+    *
+    * When textures are in use, the fill color is ignored. Instead, use tint() to 
+    * specify the color of the texture as it is applied to the shape.
+    *
+    * @param {PImage} pimage the texture to apply
+    *
+    * @returns none
+    *
+    * @see textureMode
+    * @see beginShape
+    * @see endShape
+    * @see vertex
     */
     p.texture = function(pimage) {
       if (pimage.localName === "canvas") {
@@ -11604,8 +11679,30 @@
         pimage.__texture = texture;
 
         var cvs = document.createElement('canvas');
-        cvs.width = pimage.width;
-        cvs.height = pimage.height;
+
+        // WebGL requires power of two textures
+        if(pimage.width & (pimage.width-1) === 0 ){
+          cvs.width = pimage.width;
+        }
+        else{
+          var i = 1;
+          while (i < pimage.width){
+            i *= 2;
+          }
+          cvs.width = i;
+        }
+        
+        if(pimage.height & (pimage.height-1) === 0 ){
+          cvs.height = pimage.height;
+        }
+        else{
+          var i = 1;
+          while (i < pimage.height){
+            i *= 2;
+          }
+          cvs.height = i;
+        }
+        
         var ctx = cvs.getContext('2d');
         var textureImage = ctx.createImageData(cvs.width, cvs.height);
 
@@ -11639,29 +11736,29 @@
       curTexture.height = pimage.height;
       usingTexture = true;
       curContext.useProgram(programObject3D);
-      uniformi(programObject3D, "usingTexture", usingTexture);
+      uniformi("usingTexture3d", programObject3D, "usingTexture", usingTexture);
     };
 
     /**
-     * Sets the coordinate space for texture mapping. There are two options, IMAGE, 
-     * which refers to the actual coordinates of the image, and NORMALIZED, which 
-     * refers to a normalized space of values ranging from 0 to 1. The default mode 
-     * is IMAGE. In IMAGE, if an image is 100 x 200 pixels, mapping the image onto 
-     * the entire size of a quad would require the points (0,0) (0,100) (100,200) (0,200). 
-     * The same mapping in NORMAL_SPACE is (0,0) (0,1) (1,1) (0,1).
-     *
-     * @param MODE either IMAGE or NORMALIZED
-     *
-     * @returns none
-     *
-     * @see texture
+    * Sets the coordinate space for texture mapping. There are two options, IMAGE, 
+    * which refers to the actual coordinates of the image, and NORMALIZED, which 
+    * refers to a normalized space of values ranging from 0 to 1. The default mode 
+    * is IMAGE. In IMAGE, if an image is 100 x 200 pixels, mapping the image onto 
+    * the entire size of a quad would require the points (0,0) (0,100) (100,200) (0,200). 
+    * The same mapping in NORMAL_SPACE is (0,0) (0,1) (1,1) (0,1).
+    *
+    * @param MODE either IMAGE or NORMALIZED
+    *
+    * @returns none
+    *
+    * @see texture
     */
     p.textureMode = function(mode){
       curTextureMode = mode;
     };
     /**
-     * The curveVertexSegment() function handle emitting a specific segment of Catmull-Rom curve. Internal helper function used by <b>curveVertex()</b>.
-     */
+    * The curveVertexSegment() function handle emitting a specific segment of Catmull-Rom curve. Internal helper function used by <b>curveVertex()</b>.
+    */
     var curveVertexSegment = function(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4) {
       var x0 = x2;
       var y0 = y2;
@@ -11691,24 +11788,24 @@
     };
 
     /**
-     * Specifies vertex coordinates for curves. This function may only be used between <b>beginShape()</b> and
-     * <b>endShape()</b> and only when there is no MODE parameter specified to <b>beginShape()</b>. The first and last points
-     * in a series of <b>curveVertex()</b> lines will be used to guide the beginning and end of a the curve. A minimum of four
-     * points is required to draw a tiny curve between the second and third points. Adding a fifth point with
-     * <b>curveVertex()</b> will draw the curve between the second, third, and fourth points. The <b>curveVertex()</b> function
-     * is an implementation of Catmull-Rom splines. Using the 3D version of requires rendering with P3D or OPENGL (see the
-     * Environment reference for more information). <br /> <br /><b>NOTE: </b> Fill does not work properly yet.
-     *
-     * @param {float | int} x The x-coordinate of the vertex
-     * @param {float | int} y The y-coordinate of the vertex
-     * @param {float | int} z The z-coordinate of the vertex
-     * 
-     * @see curve
-     * @see beginShape
-     * @see endShape
-     * @see vertex
-     * @see bezierVertex
-     */
+    * Specifies vertex coordinates for curves. This function may only be used between <b>beginShape()</b> and
+    * <b>endShape()</b> and only when there is no MODE parameter specified to <b>beginShape()</b>. The first and last points
+    * in a series of <b>curveVertex()</b> lines will be used to guide the beginning and end of a the curve. A minimum of four
+    * points is required to draw a tiny curve between the second and third points. Adding a fifth point with
+    * <b>curveVertex()</b> will draw the curve between the second, third, and fourth points. The <b>curveVertex()</b> function
+    * is an implementation of Catmull-Rom splines. Using the 3D version of requires rendering with P3D or OPENGL (see the
+    * Environment reference for more information). <br /> <br /><b>NOTE: </b> Fill does not work properly yet.
+    *
+    * @param {float | int} x The x-coordinate of the vertex
+    * @param {float | int} y The y-coordinate of the vertex
+    * @param {float | int} z The z-coordinate of the vertex
+    * 
+    * @see curve
+    * @see beginShape
+    * @see endShape
+    * @see vertex
+    * @see bezierVertex
+    */
     p.curveVertex = function(x, y, z) {
       isCurve = true;
       if(p.use3DContext){
@@ -11743,34 +11840,34 @@
     };
 
     /**
-     * The curve() function draws a curved line on the screen. The first and second parameters
-     * specify the beginning control point and the last two parameters specify
-     * the ending control point. The middle parameters specify the start and
-     * stop of the curve. Longer curves can be created by putting a series of
-     * <b>curve()</b> functions together or using <b>curveVertex()</b>.
-     * An additional function called <b>curveTightness()</b> provides control
-     * for the visual quality of the curve. The <b>curve()</b> function is an
-     * implementation of Catmull-Rom splines. Using the 3D version of requires
-     * rendering with P3D or OPENGL (see the Environment reference for more
-     * information).
-     *
-     * @param {int|float} x1 coordinates for the beginning control point
-     * @param {int|float} y1 coordinates for the beginning control point
-     * @param {int|float} z1 coordinates for the beginning control point
-     * @param {int|float} x2 coordinates for the first point
-     * @param {int|float} y2 coordinates for the first point
-     * @param {int|float} z2 coordinates for the first point
-     * @param {int|float} x3 coordinates for the second point
-     * @param {int|float} y3 coordinates for the second point
-     * @param {int|float} z3 coordinates for the second point
-     * @param {int|float} x4 coordinates for the ending control point
-     * @param {int|float} y4 coordinates for the ending control point
-     * @param {int|float} z4 coordinates for the ending control point
-     *
-     * @see #curveVertex()
-     * @see #curveTightness()
-     * @see #bezier()
-     */
+    * The curve() function draws a curved line on the screen. The first and second parameters
+    * specify the beginning control point and the last two parameters specify
+    * the ending control point. The middle parameters specify the start and
+    * stop of the curve. Longer curves can be created by putting a series of
+    * <b>curve()</b> functions together or using <b>curveVertex()</b>.
+    * An additional function called <b>curveTightness()</b> provides control
+    * for the visual quality of the curve. The <b>curve()</b> function is an
+    * implementation of Catmull-Rom splines. Using the 3D version of requires
+    * rendering with P3D or OPENGL (see the Environment reference for more
+    * information).
+    *
+    * @param {int|float} x1 coordinates for the beginning control point
+    * @param {int|float} y1 coordinates for the beginning control point
+    * @param {int|float} z1 coordinates for the beginning control point
+    * @param {int|float} x2 coordinates for the first point
+    * @param {int|float} y2 coordinates for the first point
+    * @param {int|float} z2 coordinates for the first point
+    * @param {int|float} x3 coordinates for the second point
+    * @param {int|float} y3 coordinates for the second point
+    * @param {int|float} z3 coordinates for the second point
+    * @param {int|float} x4 coordinates for the ending control point
+    * @param {int|float} y4 coordinates for the ending control point
+    * @param {int|float} z4 coordinates for the ending control point
+    *
+    * @see #curveVertex()
+    * @see #curveTightness()
+    * @see #bezier()
+    */
     p.curve = function curve() {
       if (arguments.length === 8) // curve(x1, y1, x2, y2, x3, y3, x4, y4)
       {
@@ -11793,35 +11890,35 @@
     };
 
     /**
-     * The curveTightness() function modifies the quality of forms created with <b>curve()</b> and
-     * <b>curveVertex()</b>. The parameter <b>squishy</b> determines how the
-     * curve fits to the vertex points. The value 0.0 is the default value for
-     * <b>squishy</b> (this value defines the curves to be Catmull-Rom splines)
-     * and the value 1.0 connects all the points with straight lines.
-     * Values within the range -5.0 and 5.0 will deform the curves but
-     * will leave them recognizable and as values increase in magnitude,
-     * they will continue to deform.
-     *
-     * @param {float} tightness amount of deformation from the original vertices
-     *
-     * @see #curve()
-     * @see #curveVertex()
-     *
-     */
+    * The curveTightness() function modifies the quality of forms created with <b>curve()</b> and
+    * <b>curveVertex()</b>. The parameter <b>squishy</b> determines how the
+    * curve fits to the vertex points. The value 0.0 is the default value for
+    * <b>squishy</b> (this value defines the curves to be Catmull-Rom splines)
+    * and the value 1.0 connects all the points with straight lines.
+    * Values within the range -5.0 and 5.0 will deform the curves but
+    * will leave them recognizable and as values increase in magnitude,
+    * they will continue to deform.
+    *
+    * @param {float} tightness amount of deformation from the original vertices
+    *
+    * @see #curve()
+    * @see #curveVertex()
+    *
+    */
     p.curveTightness = function(tightness) {
       curTightness = tightness;
     };
 
     /**
-     * The curveDetail() function sets the resolution at which curves display. The default value is 20.
-     * This function is only useful when using the P3D or OPENGL renderer.
-     *
-     * @param {int} detail resolution of the curves
-     *
-     * @see curve()
-     * @see curveVertex()
-     * @see curveTightness()
-     */
+    * The curveDetail() function sets the resolution at which curves display. The default value is 20.
+    * This function is only useful when using the P3D or OPENGL renderer.
+    *
+    * @param {int} detail resolution of the curves
+    *
+    * @see curve()
+    * @see curveVertex()
+    * @see curveTightness()
+    */
     p.curveDetail = function curveDetail(detail) {
       curveDet = detail;
       curveInit();
@@ -11895,43 +11992,87 @@
     };
 
     /**
-     * The arc() function draws an arc in the display window.
-     * Arcs are drawn along the outer edge of an ellipse defined by the
-     * <b>x</b>, <b>y</b>, <b>width</b> and <b>height</b> parameters.
-     * The origin or the arc's ellipse may be changed with the
-     * <b>ellipseMode()</b> function.
-     * The <b>start</b> and <b>stop</b> parameters specify the angles
-     * at which to draw the arc.
-     *
-     * @param {float} a       x-coordinate of the arc's ellipse
-     * @param {float} b       y-coordinate of the arc's ellipse
-     * @param {float} c       width of the arc's ellipse
-     * @param {float} d       height of the arc's ellipse
-     * @param {float} start   angle to start the arc, specified in radians
-     * @param {float} stop    angle to stop the arc, specified in radians
-     *
-     * @see #ellipseMode()
-     * @see #ellipse()
-     */
+    * The arc() function draws an arc in the display window.
+    * Arcs are drawn along the outer edge of an ellipse defined by the
+    * <b>x</b>, <b>y</b>, <b>width</b> and <b>height</b> parameters.
+    * The origin or the arc's ellipse may be changed with the
+    * <b>ellipseMode()</b> function.
+    * The <b>start</b> and <b>stop</b> parameters specify the angles
+    * at which to draw the arc.
+    *
+    * @param {float} a       x-coordinate of the arc's ellipse
+    * @param {float} b       y-coordinate of the arc's ellipse
+    * @param {float} c       width of the arc's ellipse
+    * @param {float} d       height of the arc's ellipse
+    * @param {float} start   angle to start the arc, specified in radians
+    * @param {float} stop    angle to stop the arc, specified in radians
+    *
+    * @see #ellipseMode()
+    * @see #ellipse()
+    */
     p.arc = function arc(x, y, width, height, start, stop) {
-      if (width <= 0) {
-        return;
+      if (width <= 0 || stop < start) { return; }
+      
+      if (curEllipseMode === PConstants.CORNERS) {
+        width = width - x;
+        height = height - y;
+
+      } else if (curEllipseMode === PConstants.RADIUS) {
+        x = x - width;
+        y = y - height;
+        width = width * 2;
+        height = height * 2;
+
+      } else if (curEllipseMode === PConstants.CENTER) {
+        x = x - width/2;
+        y = y - height/2;
+      }
+      // make sure that we're starting at a useful point
+      while (start < 0) {
+        start += PConstants.TWO_PI;
+        stop += PConstants.TWO_PI;
+      }
+      if (stop - start > PConstants.TWO_PI) {
+        start = 0;
+        stop = PConstants.TWO_PI;
+      }
+      var hr = width / 2;
+      var vr = height / 2;
+      var centerX = x + hr;
+      var centerY = y + vr;     
+      var i, ii, startLUT, stopLUT;
+      if (doFill) {
+        // shut off stroke for a minute
+        var savedStroke = doStroke;
+        doStroke = false;
+        startLUT = 0.5 + (start / PConstants.TWO_PI) * PConstants.SINCOS_LENGTH;
+        stopLUT  = 0.5 + (stop / PConstants.TWO_PI) * PConstants.SINCOS_LENGTH;
+        p.beginShape();
+        p.vertex(centerX, centerY);
+        for (i = startLUT; i < stopLUT; i++) {
+          ii = i % PConstants.SINCOS_LENGTH;
+          if (ii < 0) { ii += PConstants.SINCOS_LENGTH; }
+          p.vertex(centerX + parseFloat(Math.cos(ii * PConstants.DEG_TO_RAD * 0.5)) * hr,centerY + parseFloat(Math.sin(ii * PConstants.DEG_TO_RAD * 0.5)) * vr);
+        }
+        p.endShape(PConstants.CLOSE);
+        doStroke = savedStroke;
       }
 
-      if (curEllipseMode === PConstants.CORNER) {
-        x += width / 2;
-        y += height / 2;
+      if (doStroke) {
+        // and doesn't include the first (center) vertex.
+        var savedFill = doFill;
+        doFill = false;
+        startLUT = 0.5 + (start / PConstants.TWO_PI) * PConstants.SINCOS_LENGTH;
+        stopLUT  = 0.5 + (stop / PConstants.TWO_PI) * PConstants.SINCOS_LENGTH;
+        p.beginShape(); 
+        for (i = startLUT; i < stopLUT; i ++) {
+          ii = i % PConstants.SINCOS_LENGTH;
+          if (ii < 0) { ii += PConstants.SINCOS_LENGTH; }
+          p.vertex(centerX + parseFloat(Math.cos(ii * PConstants.DEG_TO_RAD * 0.5)) * hr, centerY + parseFloat(Math.sin(ii * PConstants.DEG_TO_RAD * 0.5)) * vr);
+        }
+        p.endShape();
+        doFill = savedFill;
       }
-
-      curContext.moveTo(x, y);
-      curContext.beginPath();
-      curContext.arc(x, y, curEllipseMode === PConstants.CENTER_RADIUS ? width : width / 2, start, stop, false);
-
-      executeContextStroke();
-      curContext.lineTo(x, y);
-
-      executeContextFill();
-      curContext.closePath();
     };
 
     /**
@@ -11988,17 +12129,17 @@
         if (lineWidth > 0 && doStroke) {
           curContext.useProgram(programObject2D);
 
-          uniformMatrix(programObject2D, "model", false, [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1]);
-          uniformMatrix(programObject2D, "view", false, view.array());
-          uniformMatrix(programObject2D, "projection", false, proj.array());
+          uniformMatrix("model2d", programObject2D, "model", false, [1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1]);
+          uniformMatrix("view2d", programObject2D, "view", false, view.array());
+          uniformMatrix("projection2d", programObject2D, "projection", false, proj.array());
 
-          uniformf(programObject2D, "color", strokeStyle);
-          uniformi(programObject2D, "picktype", 0);
+          uniformf("color2d", programObject2D, "color", strokeStyle);
+          uniformi("picktype2d", programObject2D, "picktype", 0);
 
           curContext.lineWidth(lineWidth);
 
-          vertexAttribPointer(programObject2D, "Vertex", 3, lineBuffer);
-          disableVertexAttribPointer(programObject2D, "aTextureCoord");
+          vertexAttribPointer("vertex2d", programObject2D, "Vertex", 3, lineBuffer);
+          disableVertexAttribPointer("aTextureCoord2d", programObject2D, "aTextureCoord");
 
           curContext.bufferData(curContext.ARRAY_BUFFER, new Float32Array(lineVerts), curContext.STREAM_DRAW);
           curContext.drawArrays(curContext.LINES, 0, 2);
@@ -12037,20 +12178,20 @@
     };
 
     /**
-     * Draws a Bezier curve on the screen. These curves are defined by a series of anchor and control points. The first
-     * two parameters specify the first anchor point and the last two parameters specify the other anchor point. The
-     * middle parameters specify the control points which define the shape of the curve. Bezier curves were developed
-     * by French engineer Pierre Bezier. Using the 3D version of requires rendering with P3D or OPENGL (see the
-     * Environment reference for more information).
-     *
-     * @param {int | float} x1,y1,z1    coordinates for the first anchor point
-     * @param {int | float} cx1,cy1,cz1 coordinates for the first control point
-     * @param {int | float} cx2,cy2,cz2 coordinates for the second control point
-     * @param {int | float} x2,y2,z2    coordinates for the second anchor point
-     *
-     * @see bezierVertex
-     * @see curve
-     */
+    * Draws a Bezier curve on the screen. These curves are defined by a series of anchor and control points. The first
+    * two parameters specify the first anchor point and the last two parameters specify the other anchor point. The
+    * middle parameters specify the control points which define the shape of the curve. Bezier curves were developed
+    * by French engineer Pierre Bezier. Using the 3D version of requires rendering with P3D or OPENGL (see the
+    * Environment reference for more information).
+    *
+    * @param {int | float} x1,y1,z1    coordinates for the first anchor point
+    * @param {int | float} cx1,cy1,cz1 coordinates for the first control point
+    * @param {int | float} cx2,cy2,cz2 coordinates for the second control point
+    * @param {int | float} x2,y2,z2    coordinates for the second anchor point
+    *
+    * @see bezierVertex
+    * @see curve
+    */
     p.bezier = function bezier() {
       if( arguments.length === 8 && !p.use3DContext ){
           p.beginShape();
@@ -12074,109 +12215,109 @@
     };
 
     /**
-     * Sets the resolution at which Beziers display. The default value is 20. This function is only useful when using the P3D
-     * or OPENGL renderer as the default (JAVA2D) renderer does not use this information.
-     *
-     * @param {int} detail resolution of the curves
-     *
-     * @see curve
-     * @see curveVertex
-     * @see curveTightness
-     */
+    * Sets the resolution at which Beziers display. The default value is 20. This function is only useful when using the P3D
+    * or OPENGL renderer as the default (JAVA2D) renderer does not use this information.
+    *
+    * @param {int} detail resolution of the curves
+    *
+    * @see curve
+    * @see curveVertex
+    * @see curveTightness
+    */
     p.bezierDetail = function bezierDetail( detail ){
       bezDetail = detail;
     };
 
     /**
-     * The bezierPoint() function evalutes quadratic bezier at point t for points a, b, c, d.
-     * The parameter t varies between 0 and 1. The a and d parameters are the
-     * on-curve points, b and c are the control points. To make a two-dimensional
-     * curve, call this function once with the x coordinates and a second time
-     * with the y coordinates to get the location of a bezier curve at t.
-     *
-     * @param {float} a   coordinate of first point on the curve
-     * @param {float} b   coordinate of first control point
-     * @param {float} c   coordinate of second control point
-     * @param {float} d   coordinate of second point on the curve
-     * @param {float} t   value between 0 and 1
-     *
-     * @see #bezier()
-     * @see #bezierVertex()
-     * @see #curvePoint()
-     */
+    * The bezierPoint() function evalutes quadratic bezier at point t for points a, b, c, d.
+    * The parameter t varies between 0 and 1. The a and d parameters are the
+    * on-curve points, b and c are the control points. To make a two-dimensional
+    * curve, call this function once with the x coordinates and a second time
+    * with the y coordinates to get the location of a bezier curve at t.
+    *
+    * @param {float} a   coordinate of first point on the curve
+    * @param {float} b   coordinate of first control point
+    * @param {float} c   coordinate of second control point
+    * @param {float} d   coordinate of second point on the curve
+    * @param {float} t   value between 0 and 1
+    *
+    * @see #bezier()
+    * @see #bezierVertex()
+    * @see #curvePoint()
+    */
     p.bezierPoint = function bezierPoint(a, b, c, d, t) {
       return (1 - t) * (1 - t) * (1 - t) * a + 3 * (1 - t) * (1 - t) * t * b + 3 * (1 - t) * t * t * c + t * t * t * d;
     };
 
     /**
-     * The bezierTangent() function calculates the tangent of a point on a Bezier curve. There is a good
-     * definition of "tangent" at Wikipedia: <a href="http://en.wikipedia.org/wiki/Tangent" target="new">http://en.wikipedia.org/wiki/Tangent</a>
-     *
-     * @param {float} a   coordinate of first point on the curve
-     * @param {float} b   coordinate of first control point
-     * @param {float} c   coordinate of second control point
-     * @param {float} d   coordinate of second point on the curve
-     * @param {float} t   value between 0 and 1
-     *
-     * @see #bezier()
-     * @see #bezierVertex()
-     * @see #curvePoint()
-     */
+    * The bezierTangent() function calculates the tangent of a point on a Bezier curve. There is a good
+    * definition of "tangent" at Wikipedia: <a href="http://en.wikipedia.org/wiki/Tangent" target="new">http://en.wikipedia.org/wiki/Tangent</a>
+    *
+    * @param {float} a   coordinate of first point on the curve
+    * @param {float} b   coordinate of first control point
+    * @param {float} c   coordinate of second control point
+    * @param {float} d   coordinate of second point on the curve
+    * @param {float} t   value between 0 and 1
+    *
+    * @see #bezier()
+    * @see #bezierVertex()
+    * @see #curvePoint()
+    */
     p.bezierTangent = function bezierTangent(a, b, c, d, t) {
       return (3 * t * t * (-a + 3 * b - 3 * c + d) + 6 * t * (a - 2 * b + c) + 3 * (-a + b));
     };
 
     /**
-     * The curvePoint() function evalutes the Catmull-Rom curve at point t for points a, b, c, d. The
-     * parameter t varies between 0 and 1, a and d are points on the curve,
-     * and b and c are the control points. This can be done once with the x
-     * coordinates and a second time with the y coordinates to get the
-     * location of a curve at t.
-     *
-     * @param {int|float} a   coordinate of first point on the curve
-     * @param {int|float} b   coordinate of second point on the curve
-     * @param {int|float} c   coordinate of third point on the curve
-     * @param {int|float} d   coordinate of fourth point on the curve
-     * @param {float} t       value between 0 and 1
-     *
-     * @see #curve()
-     * @see #curveVertex()
-     * @see #bezierPoint()
-     */
+    * The curvePoint() function evalutes the Catmull-Rom curve at point t for points a, b, c, d. The
+    * parameter t varies between 0 and 1, a and d are points on the curve,
+    * and b and c are the control points. This can be done once with the x
+    * coordinates and a second time with the y coordinates to get the
+    * location of a curve at t.
+    *
+    * @param {int|float} a   coordinate of first point on the curve
+    * @param {int|float} b   coordinate of second point on the curve
+    * @param {int|float} c   coordinate of third point on the curve
+    * @param {int|float} d   coordinate of fourth point on the curve
+    * @param {float} t       value between 0 and 1
+    *
+    * @see #curve()
+    * @see #curveVertex()
+    * @see #bezierPoint()
+    */
     p.curvePoint = function curvePoint(a, b, c, d, t) {
       return 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
     };
 
     /**
-     * The curveTangent() function calculates the tangent of a point on a Catmull-Rom curve. 
-     * There is a good definition of "tangent" at Wikipedia: <a href="http://en.wikipedia.org/wiki/Tangent" target="new">http://en.wikipedia.org/wiki/Tangent</a>.
-     *
-     * @param {int|float} a   coordinate of first point on the curve
-     * @param {int|float} b   coordinate of first control point
-     * @param {int|float} c   coordinate of second control point
-     * @param {int|float} d   coordinate of second point on the curve
-     * @param {float} t       value between 0 and 1
-     *
-     * @see #curve()
-     * @see #curveVertex()
-     * @see #curvePoint()
-     * @see #bezierTangent()
-     */
+    * The curveTangent() function calculates the tangent of a point on a Catmull-Rom curve. 
+    * There is a good definition of "tangent" at Wikipedia: <a href="http://en.wikipedia.org/wiki/Tangent" target="new">http://en.wikipedia.org/wiki/Tangent</a>.
+    *
+    * @param {int|float} a   coordinate of first point on the curve
+    * @param {int|float} b   coordinate of first control point
+    * @param {int|float} c   coordinate of second control point
+    * @param {int|float} d   coordinate of second point on the curve
+    * @param {float} t       value between 0 and 1
+    *
+    * @see #curve()
+    * @see #curveVertex()
+    * @see #curvePoint()
+    * @see #bezierTangent()
+    */
     p.curveTangent = function curveTangent(a, b, c, d, t) {
       return 0.5 * ((-a + c) + 2 * (2 * a - 5 * b + 4 * c - d) * t + 3 * (-a + 3 * b - 3 * c + d) * t * t);
     };
 
     /**
-     * A triangle is a plane created by connecting three points. The first two arguments specify the first point,
-     * the middle two arguments specify the second point, and the last two arguments specify the third point.
-     *
-     * @param {int | float} x1 x-coordinate of the first point
-     * @param {int | float} y1 y-coordinate of the first point
-     * @param {int | float} x2 x-coordinate of the second point
-     * @param {int | float} y2 y-coordinate of the second point
-     * @param {int | float} x3 x-coordinate of the third point
-     * @param {int | float} y3 y-coordinate of the third point
-     */
+    * A triangle is a plane created by connecting three points. The first two arguments specify the first point,
+    * the middle two arguments specify the second point, and the last two arguments specify the third point.
+    *
+    * @param {int | float} x1 x-coordinate of the first point
+    * @param {int | float} y1 y-coordinate of the first point
+    * @param {int | float} x2 x-coordinate of the second point
+    * @param {int | float} y2 y-coordinate of the second point
+    * @param {int | float} x3 x-coordinate of the third point
+    * @param {int | float} y3 y-coordinate of the third point
+    */
     p.triangle = function triangle(x1, y1, x2, y2, x3, y3) {
       p.beginShape(PConstants.TRIANGLES);
       p.vertex(x1, y1, 0);
@@ -12186,19 +12327,19 @@
     };
 
     /**
-     * A quad is a quadrilateral, a four sided polygon. It is similar to a rectangle, but the angles between its
-     * edges are not constrained to ninety degrees. The first pair of parameters (x1,y1) sets the first vertex
-     * and the subsequent pairs should proceed clockwise or counter-clockwise around the defined shape.
-     *
-     * @param {float | int} x1 x-coordinate of the first corner
-     * @param {float | int} y1 y-coordinate of the first corner
-     * @param {float | int} x2 x-coordinate of the second corner
-     * @param {float | int} y2 y-coordinate of the second corner
-     * @param {float | int} x3 x-coordinate of the third corner
-     * @param {float | int} y3 y-coordinate of the third corner
-     * @param {float | int} x4 x-coordinate of the fourth corner
-     * @param {float | int} y4 y-coordinate of the fourth corner
-     */
+    * A quad is a quadrilateral, a four sided polygon. It is similar to a rectangle, but the angles between its
+    * edges are not constrained to ninety degrees. The first pair of parameters (x1,y1) sets the first vertex
+    * and the subsequent pairs should proceed clockwise or counter-clockwise around the defined shape.
+    *
+    * @param {float | int} x1 x-coordinate of the first corner
+    * @param {float | int} y1 y-coordinate of the first corner
+    * @param {float | int} x2 x-coordinate of the second corner
+    * @param {float | int} y2 y-coordinate of the second corner
+    * @param {float | int} x3 x-coordinate of the third corner
+    * @param {float | int} y3 y-coordinate of the third corner
+    * @param {float | int} x4 x-coordinate of the fourth corner
+    * @param {float | int} y4 y-coordinate of the fourth corner
+    */
     p.quad = function quad(x1, y1, x2, y2, x3, y3, x4, y4) {
       p.beginShape(PConstants.QUADS);
       p.vertex(x1, y1, 0);
@@ -12242,15 +12383,15 @@
 
         if (lineWidth > 0 && doStroke) {
           curContext.useProgram(programObject2D);
-          uniformMatrix(programObject2D, "model", false, model.array());
-          uniformMatrix(programObject2D, "view", false, view.array());
-          uniformMatrix(programObject2D, "projection", false, proj.array());
+          uniformMatrix("model2d", programObject2D, "model", false, model.array());
+          uniformMatrix("view2d", programObject2D, "view", false, view.array());
+          uniformMatrix("projection2d", programObject2D, "projection", false, proj.array());
 
-          uniformf(programObject2D, "color", strokeStyle);
-          uniformi(programObject2D, "picktype", 0);
+          uniformf("color2d", programObject2D, "color", strokeStyle);
+          uniformi("picktype2d", programObject2D, "picktype", 0);
 
-          vertexAttribPointer(programObject2D, "Vertex", 3, rectBuffer);
-          disableVertexAttribPointer(programObject2D, "aTextureCoord");
+          vertexAttribPointer("vertex2d", programObject2D, "Vertex", 3, rectBuffer);
+          disableVertexAttribPointer("aTextureCoord2d", programObject2D, "aTextureCoord");
 
           curContext.lineWidth(lineWidth);
           curContext.drawArrays(curContext.LINE_LOOP, 0, rectVerts.length / 3);
@@ -12258,9 +12399,9 @@
 
         if (doFill) {
           curContext.useProgram(programObject3D);
-          uniformMatrix(programObject3D, "model", false, model.array());
-          uniformMatrix(programObject3D, "view", false, view.array());
-          uniformMatrix(programObject3D, "projection", false, proj.array());
+          uniformMatrix("model3d", programObject3D, "model", false, model.array());
+          uniformMatrix("view3d", programObject3D, "view", false, view.array());
+          uniformMatrix("projection3d", programObject3D, "projection", false, proj.array());
 
           // fix stitching problems. (lines get occluded by triangles
           // since they share the same depth values). This is not entirely
@@ -12269,7 +12410,7 @@
           curContext.enable(curContext.POLYGON_OFFSET_FILL);
           curContext.polygonOffset(1, 1);
 
-          uniformf(programObject3D, "color", fillStyle);
+          uniformf("color3d", programObject3D, "color", fillStyle);
 
           var v = new PMatrix3D();
           v.set(view);
@@ -12284,10 +12425,10 @@
           normalMatrix.invert();
           normalMatrix.transpose();
 
-          uniformMatrix(programObject3D, "normalTransform", false, normalMatrix.array());
+          uniformMatrix("normalTransform3d", programObject3D, "normalTransform", false, normalMatrix.array());
 
-          vertexAttribPointer(programObject3D, "Vertex", 3, rectBuffer);
-          vertexAttribPointer(programObject3D, "Normal", 3, rectNormBuffer);
+          vertexAttribPointer("vertex3d", programObject3D, "Vertex", 3, rectBuffer);
+          vertexAttribPointer("normal3d", programObject3D, "Normal", 3, rectNormBuffer);
 
           curContext.drawArrays(curContext.TRIANGLE_FAN, 0, rectVerts.length / 3);
           curContext.disable(curContext.POLYGON_OFFSET_FILL);
@@ -12343,17 +12484,17 @@
     };
 
     /**
-     * Draws an ellipse (oval) in the display window. An ellipse with an equal <b>width</b> and <b>height</b> is a circle.
-     * The first two parameters set the location, the third sets the width, and the fourth sets the height. The origin may be
-     * changed with the <b>ellipseMode()</b> function.
-     *
-     * @param {float|int} x      x-coordinate of the ellipse
-     * @param {float|int} y      y-coordinate of the ellipse
-     * @param {float|int} width  width of the ellipse
-     * @param {float|int} height height of the ellipse
-     *
-     * @see ellipseMode
-     */
+    * Draws an ellipse (oval) in the display window. An ellipse with an equal <b>width</b> and <b>height</b> is a circle.
+    * The first two parameters set the location, the third sets the width, and the fourth sets the height. The origin may be
+    * changed with the <b>ellipseMode()</b> function.
+    *
+    * @param {float|int} x      x-coordinate of the ellipse
+    * @param {float|int} y      y-coordinate of the ellipse
+    * @param {float|int} width  width of the ellipse
+    * @param {float|int} height height of the ellipse
+    *
+    * @see ellipseMode
+    */
     p.ellipse = function ellipse(x, y, width, height) {
       x = x || 0;
       y = y || 0;
@@ -12514,6 +12655,24 @@
       }
     };
 
+    var saveNumber = 0;
+
+    p.saveFrame = function saveFrame(file) {
+      if(file === undef) {
+        // use default name template if parameter is not specified
+        file = "screen-####.png";
+      }
+      // Increment changeable part: screen-0000.png, screen-0001.png, ...
+      var frameFilename = file.replace(/#+/, function(all) {
+        var s = "" + (saveNumber++);
+        while(s.length < all.length) {
+          s = "0" + s;
+        }
+        return s;
+      });
+      p.save(frameFilename);
+    };
+
     var utilityContext2d = document.createElement("canvas").getContext("2d");
 
     var canvasDataCache = [undef, undef, undef]; // we need three for now
@@ -12642,6 +12801,7 @@
         } else if (arguments.length === 10) {
           p.blend(srcImg, x, y, width, height, dx, dy, dwidth, dheight, MODE, this);
         }
+        delete this.sourceImg;
       };
 
       /**
@@ -12670,6 +12830,7 @@
         } else if (arguments.length === 9) {
           p.blend(srcImg, sx, sy, swidth, sheight, dx, dy, dwidth, dheight, PConstants.REPLACE, this);
         }
+        delete this.sourceImg;
       };
 
       /**
@@ -12697,6 +12858,7 @@
           // no param specified, send null to show its invalid
           p.filter(mode, null, this);
         }
+        delete this.sourceImg;
       };
 
       /**
@@ -12734,9 +12896,9 @@
           if (this.width !== 0 || this.height !== 0) {
             // make aspect ratio if w or h is 0
             if (w === 0 && h !== 0) {
-              w = this.width / this.height * h;
+              w = Math.floor(this.width / this.height * h);
             } else if (h === 0 && w !== 0) {
-              h = w / (this.width / this.height);
+              h = Math.floor(this.height / this.width * w);
             }
             // put 'this.imageData' into a new canvas
             var canvas = getCanvasData(this.imageData).canvas;
@@ -12766,7 +12928,7 @@
       this.mask = function(mask) {
         this.__mask = undef;
 
-        if (mask instanceof PImage) {
+        if (mask.constructor.name === "PImage") {
           if (mask.width === this.width && mask.height === this.height) {
             this.__mask = mask;
           } else {
@@ -12977,9 +13139,9 @@
       if (curSketch.imageCache.images[file]) {
         return new PImage(curSketch.imageCache.images[file]);
       }
-      // else aysnc load it
+      // else async load it
       else {
-        var pimg = new PImage(0, 0, PConstants.ARGB);
+        var pimg = new PImage();
         var img = document.createElement('img');
 
         pimg.sourceImg = img;
@@ -13075,15 +13237,19 @@
       } else {
         // PImage.get(x,y,w,h) was called, return x,y,w,h PImage of img
         // changed for 0.9, offset start point needs to be *4
-        var start = y * img.width * 4 + (x*4);
-        var end = (y + h) * img.width * 4 + ((x + w) * 4);
-        var c = new PImage(w, h, PConstants.RGB);
-        for (var i = start, j = 0; i < end; i++, j++) {
-          // changed in 0.9
-          c.imageData.data[j] = img.imageData.data[i];
-          if ((j+1) % (w*4) === 0) {
-            //completed one line, increment i by offset
-            i += (img.width - w) * 4;
+        var c = new PImage(w, h, PConstants.RGB), cData = c.imageData.data, 
+          imgWidth = img.width, imgHeight = img.height, imgData = img.imageData.data;
+        // Don't need to copy pixels from the image outside ranges.
+        var startRow = Math.max(0, -y), startColumn = Math.max(0, -x),
+          stopRow = Math.min(h, imgHeight - y), stopColumn = Math.min(w, imgWidth - x);
+        for (var i = startRow; i < stopRow; ++i) {
+          var sourceOffset = ((y + i) * imgWidth + (x + startColumn)) * 4;
+          var targetOffset = (i * w + startColumn) * 4;
+          for (var j = startColumn; j < stopColumn; ++j) {
+            cData[targetOffset++] = imgData[sourceOffset++];
+            cData[targetOffset++] = imgData[sourceOffset++];
+            cData[targetOffset++] = imgData[sourceOffset++];
+            cData[targetOffset++] = imgData[sourceOffset++];
           }
         }
         return c;
@@ -13133,19 +13299,19 @@
     };
 
     /**
-     * Creates and returns a new <b>PGraphics</b> object of the types P2D, P3D, and JAVA2D. Use this class if you need to draw
-     * into an off-screen graphics buffer. It's not possible to use <b>createGraphics()</b> with OPENGL, because it doesn't
-     * allow offscreen use. The DXF and PDF renderers require the filename parameter. <br /><br /> It's important to call
-     * any drawing commands between beginDraw() and endDraw() statements. This is also true for any commands that affect
-     * drawing, such as smooth() or colorMode().<br /><br /> Unlike the main drawing surface which is completely opaque,
-     * surfaces created with createGraphics() can have transparency. This makes it possible to draw into a graphics and
-     * maintain the alpha channel.
-     *
-     * @param {int} width       width in pixels
-     * @param {int} height      height in pixels
-     * @param {int} renderer    Either P2D, P3D, JAVA2D, PDF, DXF
-     * @param {String} filename the name of the file (not supported yet)
-     */
+    * Creates and returns a new <b>PGraphics</b> object of the types P2D, P3D, and JAVA2D. Use this class if you need to draw
+    * into an off-screen graphics buffer. It's not possible to use <b>createGraphics()</b> with OPENGL, because it doesn't
+    * allow offscreen use. The DXF and PDF renderers require the filename parameter. <br /><br /> It's important to call
+    * any drawing commands between beginDraw() and endDraw() statements. This is also true for any commands that affect
+    * drawing, such as smooth() or colorMode().<br /><br /> Unlike the main drawing surface which is completely opaque,
+    * surfaces created with createGraphics() can have transparency. This makes it possible to draw into a graphics and
+    * maintain the alpha channel.
+    *
+    * @param {int} width       width in pixels
+    * @param {int} height      height in pixels
+    * @param {int} renderer    Either P2D, P3D, JAVA2D, PDF, DXF
+    * @param {String} filename the name of the file (not supported yet)
+    */
     p.createGraphics = function createGraphics(w, h, render) {
       var canvas = document.createElement("canvas");
       var pg = new Processing(canvas);
@@ -13393,34 +13559,34 @@
     };
 
     /**
-     * The background() function sets the color used for the background of the Processing window. 
-     * The default background is light gray. In the <b>draw()</b> function, the background color is used to clear the display window at the beginning of each frame. 
-     * An image can also be used as the background for a sketch, however its width and height must be the same size as the sketch window. 
-     * To resize an image 'b' to the size of the sketch window, use b.resize(width, height). 
-     * Images used as background will ignore the current <b>tint()</b> setting. 
-     * For the main drawing surface, the alpha value will be ignored. However,
-     * alpha can be used on PGraphics objects from <b>createGraphics()</b>. This is
-     * the only way to set all the pixels partially transparent, for instance.
-     * If the 'gray' parameter is passed in the function sets the background to a grayscale value, based on the
-     * current colorMode.
-     * <p>
-     * Note that background() should be called before any transformations occur,
-     * because some implementations may require the current transformation matrix
-     * to be identity before drawing.
-     *
-     * @param {int|float} gray    specifies a value between white and black
-     * @param {int|float} value1  red or hue value (depending on the current color mode)
-     * @param {int|float} value2  green or saturation value (depending on the current color mode)
-     * @param {int|float} value3  blue or brightness value (depending on the current color mode)
-     * @param {int|float} alpha   opacity of the background
-     * @param {Color} color       any value of the color datatype
-     * @param {int} hex           color value in hexadecimal notation (i.e. #FFCC00 or 0xFFFFCC00)
-     *
-     * @see #stroke()
-     * @see #fill()
-     * @see #tint()
-     * @see #colorMode()
-     */
+    * The background() function sets the color used for the background of the Processing window. 
+    * The default background is light gray. In the <b>draw()</b> function, the background color is used to clear the display window at the beginning of each frame. 
+    * An image can also be used as the background for a sketch, however its width and height must be the same size as the sketch window. 
+    * To resize an image 'b' to the size of the sketch window, use b.resize(width, height). 
+    * Images used as background will ignore the current <b>tint()</b> setting. 
+    * For the main drawing surface, the alpha value will be ignored. However,
+    * alpha can be used on PGraphics objects from <b>createGraphics()</b>. This is
+    * the only way to set all the pixels partially transparent, for instance.
+    * If the 'gray' parameter is passed in the function sets the background to a grayscale value, based on the
+    * current colorMode.
+    * <p>
+    * Note that background() should be called before any transformations occur,
+    * because some implementations may require the current transformation matrix
+    * to be identity before drawing.
+    *
+    * @param {int|float} gray    specifies a value between white and black
+    * @param {int|float} value1  red or hue value (depending on the current color mode)
+    * @param {int|float} value2  green or saturation value (depending on the current color mode)
+    * @param {int|float} value3  blue or brightness value (depending on the current color mode)
+    * @param {int|float} alpha   opacity of the background
+    * @param {Color} color       any value of the color datatype
+    * @param {int} hex           color value in hexadecimal notation (i.e. #FFCC00 or 0xFFFFCC00)
+    *
+    * @see #stroke()
+    * @see #fill()
+    * @see #tint()
+    * @see #colorMode()
+    */
     // Draw an image or a color to the background
     p.background = function background() {
       var color, a, img;
@@ -13456,19 +13622,27 @@
       } else { // 2d context
         if (color !== undef) {
           refreshBackground = function() {
+            saveContext(); 
+            curContext.setTransform(1, 0, 0, 1, 0, 0);
+
             if (curSketch.options.isTransparent) {
               curContext.clearRect(0,0, p.width, p.height);
             }
             curContext.fillStyle = p.color.toString(color);
             curContext.fillRect(0, 0, p.width, p.height);
             isFillDirty = true;
+            restoreContext(); 
           };
         } else {
           refreshBackground = function() {
+            saveContext(); 
+            curContext.setTransform(1, 0, 0, 1, 0, 0);
             p.image(img, 0, 0);
+            restoreContext();
           };
         }
       }
+      
       refreshBackground();
     };
 
@@ -13510,28 +13684,40 @@
           p.endShape();
         } else {
           var bounds = imageModeConvert(x || 0, y || 0, w || img.width, h || img.height, arguments.length < 4);
-          var obj = img.toImageData();
+          //var fastImage = ("sourceImg" in img) && curTint === null && !img.__mask;
+          var fastImage = !!img.sourceImg && curTint === null && !img.__mask;
+          if (fastImage) {
+            var htmlElement = img.sourceImg;
+            // Using HTML element's width and height in case if the image was resized.
+            curContext.drawImage(htmlElement, 0, 0, 
+              htmlElement.width, htmlElement.height, bounds.x, bounds.y, bounds.w, bounds.h);
+          } else {
+            var obj = img.toImageData();
 
-          if (img.__mask) {
-            var j, size;
-            if (img.__mask instanceof PImage) {
-              var objMask = img.__mask.toImageData();
-              for (j = 2, size = img.width * img.height * 4; j < size; j += 4) {
-                // using it as an alpha channel
-                obj.data[j + 1] = objMask.data[j];
-                // but only the blue color channel
-              }
-            } else {
-              for (j = 0, size = img.__mask.length; j < size; ++j) {
-                obj.data[(j << 2) + 3] = img.__mask[j];
+            if (img.__mask) {
+              var j, size;
+              if (img.__mask.constructor.name === "PImage") {
+                var objMask = img.__mask.toImageData();
+                for (j = 2, size = img.width * img.height * 4; j < size; j += 4) {
+                  // using it as an alpha channel
+                  obj.data[j + 1] = objMask.data[j];
+                  // but only the blue color channel
+                }
+              } else {
+                for (j = 0, size = img.__mask.length; j < size; ++j) {
+                  obj.data[(j << 2) + 3] = img.__mask[j];
+                }
               }
             }
+
+            // Tint the image
+            if(curTint !== null) {
+              curTint(obj);
+            }
+
+            curContext.drawImage(getCanvasData(obj).canvas, 0, 0, 
+              img.width, img.height, bounds.x, bounds.y, bounds.w, bounds.h);
           }
-
-          // draw the image
-          curTint(obj);
-
-          curContext.drawImage(getCanvasData(obj).canvas, 0, 0, img.width, img.height, bounds.x, bounds.y, bounds.w, bounds.h);
         }
       }
     };
@@ -13546,37 +13732,37 @@
     };
 
     /**
-     * The tint() function sets the fill value for displaying images. Images can be tinted to
-     * specified colors or made transparent by setting the alpha.
-     * <br><br>To make an image transparent, but not change it's color,
-     * use white as the tint color and specify an alpha value. For instance,
-     * tint(255, 128) will make an image 50% transparent (unless
-     * <b>colorMode()</b> has been used).
-     *
-     * <br><br>When using hexadecimal notation to specify a color, use "#" or
-     * "0x" before the values (e.g. #CCFFAA, 0xFFCCFFAA). The # syntax uses six
-     * digits to specify a color (the way colors are specified in HTML and CSS).
-     * When using the hexadecimal notation starting with "0x", the hexadecimal
-     * value must be specified with eight characters; the first two characters
-     * define the alpha component and the remainder the red, green, and blue
-     * components.
-     * <br><br>The value for the parameter "gray" must be less than or equal
-     * to the current maximum value as specified by <b>colorMode()</b>.
-     * The default maximum value is 255.
-     * <br><br>The tint() method is also used to control the coloring of
-     * textures in 3D.
-     *
-     * @param {int|float} gray    any valid number
-     * @param {int|float} alpha	  opacity of the image
-     * @param {int|float} value1	red or hue value
-     * @param {int|float} value2	green or saturation value
-     * @param {int|float} value3	blue or brightness value
-     * @param {int|float} color	  any value of the color datatype
-     * @param {int} hex	          color value in hexadecimal notation (i.e. #FFCC00 or 0xFFFFCC00)
-     *
-     * @see #noTint()
-     * @see #image()
-     */
+    * The tint() function sets the fill value for displaying images. Images can be tinted to
+    * specified colors or made transparent by setting the alpha.
+    * <br><br>To make an image transparent, but not change it's color,
+    * use white as the tint color and specify an alpha value. For instance,
+    * tint(255, 128) will make an image 50% transparent (unless
+    * <b>colorMode()</b> has been used).
+    *
+    * <br><br>When using hexadecimal notation to specify a color, use "#" or
+    * "0x" before the values (e.g. #CCFFAA, 0xFFCCFFAA). The # syntax uses six
+    * digits to specify a color (the way colors are specified in HTML and CSS).
+    * When using the hexadecimal notation starting with "0x", the hexadecimal
+    * value must be specified with eight characters; the first two characters
+    * define the alpha component and the remainder the red, green, and blue
+    * components.
+    * <br><br>The value for the parameter "gray" must be less than or equal
+    * to the current maximum value as specified by <b>colorMode()</b>.
+    * The default maximum value is 255.
+    * <br><br>The tint() method is also used to control the coloring of
+    * textures in 3D.
+    *
+    * @param {int|float} gray    any valid number
+    * @param {int|float} alpha	  opacity of the image
+    * @param {int|float} value1	red or hue value
+    * @param {int|float} value2	green or saturation value
+    * @param {int|float} value3	blue or brightness value
+    * @param {int|float} color	  any value of the color datatype
+    * @param {int} hex	          color value in hexadecimal notation (i.e. #FFCC00 or 0xFFFFCC00)
+    *
+    * @see #noTint()
+    * @see #image()
+    */
     p.tint = function tint() {
       var tintColor = p.color.apply(this, arguments);
       var r = p.red(tintColor) / colorModeX;
@@ -13597,13 +13783,13 @@
     };
 
     /**
-     * The noTint() function removes the current fill value for displaying images and reverts to displaying images with their original hues.
-     *
-     * @see #tint()
-     * @see #image()
-     */
+    * The noTint() function removes the current fill value for displaying images and reverts to displaying images with their original hues.
+    *
+    * @see #tint()
+    * @see #image()
+    */
     p.noTint = function noTint() {
-      curTint = function() {};
+      curTint = null;
     };
 
     /**
@@ -14560,33 +14746,55 @@
     // Font handling
     ////////////////////////////////////////////////////////////////////////////
 
+    // Defines system (non-SVG) font.
+    function PFont(name) {
+      this.name = "sans-serif";
+      if(name !== undef) {
+        switch(name) {
+          case "sans-serif":
+          case "serif":
+          case "monospace":
+          case "fantasy":
+          case "cursive":
+            this.name = name;
+            break;
+          default:
+            this.name = "\"" + name + "\", sans-serif";
+            break;
+        }
+      }
+      this.origName = name;
+    }
+    PFont.prototype.width = function(str) {
+      if ("measureText" in curContext) {
+        return curContext.measureText(typeof str === "number" ? String.fromCharCode(str) : str).width / curTextSize;
+      } else if ("mozMeasureText" in curContext) {
+        return curContext.mozMeasureText(typeof str === "number" ? String.fromCharCode(str) : str) / curTextSize;
+      } else {
+        return 0;
+      }
+    };
+    // Lists all standard fonts
+    PFont.list = function() {
+      return ["sans-serif", "serif", "monospace", "fantasy", "cursive"];
+    };
+    p.PFont = PFont;
+
     /**
-     * loadFont() Loads a font into a variable of type PFont.
-     *
-     * @param {String} name filename of the font to load
-     *
-     * @returns {PFont} new PFont object
-     *
-     * @see #PFont
-     * @see #textFont
-     * @see #text
-     * @see #createFont
-     */
+    * loadFont() Loads a font into a variable of type PFont.
+    *
+    * @param {String} name filename of the font to load
+    *
+    * @returns {PFont} new PFont object
+    *
+    * @see #PFont
+    * @see #textFont
+    * @see #text
+    * @see #createFont
+    */
     p.loadFont = function loadFont(name) {
-      if (name.indexOf(".svg") === -1) {
-        return {
-          name: "\"" + name + "\", sans-serif",
-          origName: name,
-          width: function(str) {
-            if ("measureText" in curContext) {
-              return curContext.measureText(typeof str === "number" ? String.fromCharCode(str) : str).width / curTextSize;
-            } else if ("mozMeasureText" in curContext) {
-              return curContext.mozMeasureText(typeof str === "number" ? String.fromCharCode(str) : str) / curTextSize;
-            } else {
-              return 0;
-            }
-          }
-        };
+      if (name === undef || name.indexOf(".svg") === -1) {
+        return new PFont(name);
       } else {
         // If the font is a glyph, calculate by SVG table
         var font = p.loadGlyphs(name);
@@ -14616,20 +14824,20 @@
     };
 
     /**
-     * createFont() Loads a font into a variable of type PFont.
-     *
-     * @param {String}    name    filename of the font to load
-     * @param {int|float} size    font size in pixels
-     * @param {boolean}   smooth  optional true for an antialiased font, false for aliased
-     * @param {char[]}    charset optional array containing characters to be generated
-     *
-     * @returns {PFont} new PFont object
-     *
-     * @see #PFont
-     * @see #textFont
-     * @see #text
-     * @see #loadFont
-     */
+    * createFont() Loads a font into a variable of type PFont.
+    *
+    * @param {String}    name    filename of the font to load
+    * @param {int|float} size    font size in pixels
+    * @param {boolean}   smooth  optional true for an antialiased font, false for aliased
+    * @param {char[]}    charset optional array containing characters to be generated
+    *
+    * @returns {PFont} new PFont object
+    *
+    * @see #PFont
+    * @see #textFont
+    * @see #text
+    * @see #loadFont
+    */
     p.createFont = function(name, size, smooth, charset) {
       if (arguments.length === 2) {
         p.textSize(size);
@@ -14648,47 +14856,52 @@
     };
 
     /**
-     * textFont() Sets the current font.
-     *
-     * @param {PFont}     name filename of the font to load
-     * @param {int|float} size optional font size in pixels
-     *
-     * @see #createFont
-     * @see #loadFont
-     * @see #PFont
-     * @see #text
-     */
+    * textFont() Sets the current font.
+    *
+    * @param {PFont}     name filename of the font to load
+    * @param {int|float} size optional font size in pixels
+    *
+    * @see #createFont
+    * @see #loadFont
+    * @see #PFont
+    * @see #text
+    */
     p.textFont = function textFont(name, size) {
-      curTextFont = name;
-      p.textSize(size);
-    };
-
-    /**
-     * textSize() Sets the current font size in pixels.
-     *
-     * @param {int|float} size font size in pixels
-     *
-     * @see #textFont
-     * @see #loadFont
-     * @see #PFont
-     * @see #text
-     */
-    p.textSize = function textSize(size) {
+      curTextFont = font;
       if (size) {
-        curTextSize = size;
+        p.textSize(size);
+      } else {
+        curContext.font = curContext.mozTextStyle = curTextSize + "px " + curTextFont.name;
       }
     };
 
     /**
-     * textAlign() Sets the current alignment for drawing text.
-     *
-     * @param {int} ALIGN  Horizontal alignment, either LEFT, CENTER, or RIGHT
-     * @param {int} YALIGN optional vertical alignment, either TOP, BOTTOM, CENTER, or BASELINE
-     *
-     * @see #loadFont
-     * @see #PFont
-     * @see #text
-     */
+    * textSize() Sets the current font size in pixels.
+    *
+    * @param {int|float} size font size in pixels
+    *
+    * @see #textFont
+    * @see #loadFont
+    * @see #PFont
+    * @see #text
+    */
+    p.textSize = function textSize(size) {
+      if (size) {
+        curTextSize = size;
+        curContext.font = curContext.mozTextStyle = curTextSize + "px " + curTextFont.name;
+      }
+    };
+
+    /**
+    * textAlign() Sets the current alignment for drawing text.
+    *
+    * @param {int} ALIGN  Horizontal alignment, either LEFT, CENTER, or RIGHT
+    * @param {int} YALIGN optional vertical alignment, either TOP, BOTTOM, CENTER, or BASELINE
+    *
+    * @see #loadFont
+    * @see #PFont
+    * @see #text
+    */
     p.textAlign = function textAlign() {
       if(arguments.length === 1) {
         horizontalTextAlignment = arguments[0];
@@ -14699,17 +14912,17 @@
     };
 
     /**
-     * textWidth() Calculates and returns the width of any character or text string in pixels.
-     *
-     * @param {char|String} str char or String to be measured
-     *
-     * @return {float} width of char or String in pixels
-     *
-     * @see #loadFont
-     * @see #PFont
-     * @see #text
-     * @see #textFont
-     */
+    * textWidth() Calculates and returns the width of any character or text string in pixels.
+    *
+    * @param {char|String} str char or String to be measured
+    *
+    * @return {float} width of char or String in pixels
+    *
+    * @see #loadFont
+    * @see #PFont
+    * @see #text
+    * @see #textFont
+    */
     p.textWidth = function textWidth(str) {
       if (p.use3DContext) {
         if (textcanvas === undef) {
@@ -14735,13 +14948,34 @@
       }
     };
 
+    p.textLeading = function textLeading(leading) {
+      curTextLeading = leading;
+    };
+
+    var measureTextCanvas = function(fontFace, fontSize, baseLine, text) {
+      this.canvas = document.createElement('canvas');
+      this.canvas.setAttribute('width', fontSize + "px");
+      this.canvas.setAttribute('height', fontSize + "px");
+      this.ctx = this.canvas.getContext("2d");
+      this.ctx.font = fontSize + "pt " + fontFace;
+      this.ctx.fillStyle = "black";
+      this.ctx.fillRect (0, 0, fontSize, fontSize); 
+      this.ctx.fillStyle = "white";
+      this.ctx.fillText(text, 0, baseLine);
+      this.imageData = this.ctx.getImageData(0, 0, fontSize, fontSize);
+
+      this.get = function(x, y) {
+        return this.imageData.data[((y*(this.imageData.width*4)) + (x*4))];
+      };
+    };
+
     /**
-     * textAscent() height of the font above the baseline of the current font at its current size, in pixels.
-     *
-     * @returns {float} height of the font above the baseline of the current font at its current size, in pixels
-     *
-     * @see #textDescent
-     */
+    * textAscent() height of the font above the baseline of the current font at its current size, in pixels.
+    *
+    * @returns {float} height of the font above the baseline of the current font at its current size, in pixels
+    *
+    * @see #textDescent
+    */
     p.textAscent = (function() {
       var oldTextSize = undef,
           oldTextFont = undef,
@@ -14762,15 +14996,7 @@
               yLoc        = curTextSize/2;
 
           // setup off screen image to write and measure text from
-          if (graphics !== undef) {
-            graphics.size(curTextSize, curTextSize);
-          } else {
-            graphics = p.createGraphics(curTextSize, curTextSize);
-          }
-          graphics.background(0);
-          graphics.fill(255);
-          graphics.textFont(curTextFont, curTextSize);
-          graphics.text(character, 0, curTextSize);
+          graphics = new measureTextCanvas(curTextFont.name, curTextSize, curTextSize, character);
 
           // binary search for highest pixel
           while(yLoc !== bottom) {
@@ -14825,15 +15051,7 @@
               yLoc        = curTextSize/2;
 
           // setup off screen image to write and measure text from
-          if (graphics !== undef) {
-            graphics.size(curTextSize, curTextSize);
-          } else {
-            graphics = p.createGraphics(curTextSize, curTextSize);
-          }
-          graphics.background(0);
-          graphics.fill(255);
-          graphics.textFont(curTextFont, curTextSize);
-          graphics.text(character, 0, 0);
+          graphics = new measureTextCanvas(curTextFont.name, curTextSize, 0, character);
 
           // binary search for lowest pixel
           while(yLoc !== bottom) {
@@ -14983,8 +15201,6 @@
       // If the font is a standard Canvas font...
       if (!curTextFont.glyph) {
         if (str && ("fillText" in curContext || "mozDrawText" in curContext)) {
-          curContext.font = curContext.mozTextStyle = curTextSize + "px " + curTextFont.name;
-
           if (isFillDirty) {
             curContext.fillStyle = p.color.toString(currentFillColor);
             isFillDirty = false;
@@ -15075,10 +15291,14 @@
       var aspect = textcanvas.width/textcanvas.height;
       curContext = oldContext;
 
+      curContext.bindTexture(curContext.TEXTURE_2D, textTex);
       executeTexImage2D(textcanvas);
       curContext.texParameteri(curContext.TEXTURE_2D, curContext.TEXTURE_MAG_FILTER, curContext.LINEAR);
-      curContext.texParameteri(curContext.TEXTURE_2D, curContext.TEXTURE_MIN_FILTER, curContext.LINEAR_MIPMAP_LINEAR);
-      curContext.generateMipmap(curContext.TEXTURE_2D);
+      curContext.texParameteri(curContext.TEXTURE_2D, curContext.TEXTURE_MIN_FILTER, curContext.LINEAR);
+      curContext.texParameteri(curContext.TEXTURE_2D, curContext.TEXTURE_WRAP_T, curContext.CLAMP_TO_EDGE);
+      curContext.texParameteri(curContext.TEXTURE_2D, curContext.TEXTURE_WRAP_S, curContext.CLAMP_TO_EDGE);
+      // If we don't have a power of two texture, we can't mipmap it.
+      // curContext.generateMipmap(curContext.TEXTURE_2D);
 
       // horizontal offset/alignment
       var xOffset = 0;
@@ -15104,14 +15324,14 @@
       proj.transpose();
 
       curContext.useProgram(programObject2D);
-      vertexAttribPointer(programObject2D, "Vertex", 3, textBuffer);
-      vertexAttribPointer(programObject2D, "aTextureCoord", 2, textureBuffer);
-      uniformi(programObject2D, "uSampler", [0]);
-      uniformi(programObject2D, "picktype", 1);
-      uniformMatrix(programObject2D, "model", false,  model.array());
-      uniformMatrix(programObject2D, "view", false, view.array());
-      uniformMatrix(programObject2D, "projection", false, proj.array());
-      uniformf(programObject2D, "color", fillStyle);
+      vertexAttribPointer("vertex2d", programObject2D, "Vertex", 3, textBuffer);
+      vertexAttribPointer("aTextureCoord2d", programObject2D, "aTextureCoord", 2, textureBuffer);
+      uniformi("uSampler2d", programObject2D, "uSampler", [0]);
+      uniformi("picktype2d", programObject2D, "picktype", 1);
+      uniformMatrix("model2d", programObject2D, "model", false,  model.array());
+      uniformMatrix("view2d", programObject2D, "view", false, view.array());
+      uniformMatrix("projection2d", programObject2D, "projection", false, proj.array());
+      uniformf("color2d", programObject2D, "color", fillStyle);
       curContext.bindBuffer(curContext.ELEMENT_ARRAY_BUFFER, indexBuffer);
       curContext.drawElements(curContext.TRIANGLES, 6, curContext.UNSIGNED_SHORT, 0);
     }
@@ -15130,18 +15350,18 @@
 
       var yOffset;
       if(verticalTextAlignment === PConstants.TOP) {
-        yOffset = (1-baselineOffset) * curTextSize;
+        yOffset = (1-baselineOffset) * curTextLeading;
       } else if(verticalTextAlignment === PConstants.CENTER) {
-        yOffset = (1-baselineOffset - linesCount/2) * curTextSize;
+        yOffset = (1-baselineOffset - linesCount/2) * curTextLeading;
       } else if(verticalTextAlignment === PConstants.BOTTOM) {
-        yOffset = (1-baselineOffset - linesCount) * curTextSize;
+        yOffset = (1-baselineOffset - linesCount) * curTextLeading;
       } else { //  if(verticalTextAlignment === PConstants.BASELINE) {
-        yOffset = (1 - linesCount) * curTextSize;
+        yOffset = 0;
       }
       for(var i=0;i<linesCount;++i) {
         var line = lines[i];
         lineFunction(line, x, y + yOffset, z, horizontalTextAlignment);
-        yOffset += curTextSize;
+        yOffset += curTextLeading;
       }
     }
 
@@ -15153,84 +15373,62 @@
         return;
       }
 
-      var spaceMark = -1;
-      var start = 0;
-      var lineWidth = 0;
-      var textboxWidth = width;
-
-      var yOffset = 0;
-
       curContext.font = curTextSize + "px " + curTextFont.name;
 
-      var drawCommands = [];
-      var hadSpaceBefore = false;
-      for (var j=0, len=str.length; j < len; j++) {
-        var currentChar = str[j];
-        var letterWidth;
+      var spaceLoc = null,
+          yOffset = 0,
+          lineWidth = 0,
+          letterWidth = 0,
+          strings = str.split("\n");
 
-        if ("fillText" in curContext) {
-          letterWidth = curContext.measureText(currentChar).width;
-        } else if ("mozDrawText" in curContext) {
-          letterWidth = curContext.mozMeasureText(currentChar);
-        }
-
-        if (currentChar !== "\n" && (currentChar === " " || (hadSpaceBefore && str[j + 1] === " ") ||
-            lineWidth + 2 * letterWidth < textboxWidth)) { // check a line of text
-          if (currentChar === " ") {
-            spaceMark = j;
+      for (var j = 0; j < strings.length; j++) {
+        for (var jj = 0; jj < strings[j].length; jj++) {
+          if ("fillText" in curContext) {
+            letterWidth = curContext.measureText(strings[j][jj]).width;
+          } else if ("mozDrawText" in curContext) {
+            letterWidth = curContext.mozMeasureText(strings[j][jj]);
           }
           lineWidth += letterWidth;
-        } else { // draw a line of text
-          if (start === spaceMark + 1) { // in case a whole line without a space
-            spaceMark = j;
+          if (strings[j][jj] === " ") {
+            spaceLoc = jj;
           }
-
-          if (str[j] === "\n") {
-            drawCommands.push({text:str.substring(start, j), width: lineWidth, offset: yOffset});
-            start = j + 1;
-          } else {
-            drawCommands.push({text:str.substring(start, spaceMark + 1), width: lineWidth, offset: yOffset});
-            start = spaceMark + 1;
+          if (lineWidth >= width && strings[j][jj] !== " ") {
+            if (spaceLoc === null) {
+              spaceLoc = jj;
+            }
+            strings.splice(j, 1, strings[j].substring(0, spaceLoc+1), strings[j].substring(spaceLoc+1));
+            spaceLoc = null;
           }
-          yOffset += curTextSize;
-
-          lineWidth = 0;
-          j = start - 1;
         }
-        hadSpaceBefore = currentChar === " ";
+        lineWidth = letterWidth = 0;
       } // for (var j=
 
-      if (start < len) { // draw the last line
-        drawCommands.push({text:str.substring(start), width: lineWidth, offset: yOffset});
-        yOffset += curTextSize;
-      }
-
       // actual draw
-      var lineFunction = p.use3DContext ?  text$line$3d : text$line;
+      var lineFunction = p.use3DContext ? text$line$3d : text$line;
       var xOffset = 0;
-      if (horizontalTextAlignment === PConstants.CENTER) {
+      if(horizontalTextAlignment === PConstants.CENTER) {
         xOffset = width / 2;
-      } else if (horizontalTextAlignment === PConstants.RIGHT) {
+      } else if(horizontalTextAlignment === PConstants.RIGHT) {
         xOffset = width;
       }
 
       // offsets for alignment
       var boxYOffset1 = (1-baselineOffset) * curTextSize, boxYOffset2 = 0;
-      if (verticalTextAlignment === PConstants.BOTTOM) {
-        boxYOffset2 = height-yOffset;
-      } else if (verticalTextAlignment === PConstants.CENTER) {
-        boxYOffset2 = (height-yOffset) / 2;
+      if(verticalTextAlignment === PConstants.BOTTOM) {
+        boxYOffset2 = height - (strings.length * curTextLeading);
+      } else if(verticalTextAlignment === PConstants.CENTER) {
+        boxYOffset2 = (height - (strings.length * curTextLeading)) / 2;
       }
 
-      for (var il=0,ll=drawCommands.length; il<ll; ++il) {
-        var command = drawCommands[il];
-        if (command.offset + boxYOffset2 < 0) {
+      for(var il=0,ll=strings.length; il<ll; ++il, yOffset += curTextLeading) {
+        if(yOffset + boxYOffset2 < 0) {
           continue; // skip if not inside box yet
         }
-        if (command.offset + boxYOffset2 + curTextSize > height) {
+        if(yOffset + boxYOffset2 + curTextLeading > height) {
           break; // stop if no enough space for one more line draw
         }
-        lineFunction(command.text, x + xOffset, y + command.offset + boxYOffset1 + boxYOffset2, z, horizontalTextAlignment);
+        lineFunction(strings[il], x + xOffset, y + yOffset + boxYOffset1 + boxYOffset2,
+                     z, horizontalTextAlignment);
       }
     }
 
@@ -15524,14 +15722,19 @@
         });
       }
 
+      var properties = [];
       for (var propertyName in baseClass) {
         if (!(propertyName in subClass)) {
           if (typeof baseClass[propertyName] === 'function') {
             subClass[propertyName] = baseClass[propertyName];
           } else if(propertyName !== "$upcast") {
-            extendGetterSetter(propertyName);
+            // Delaying the properties extension due to the IE9 bug (see #918).
+            properties.push(propertyName); 
           }
         }
+      }
+      while (properties.length > 0) {
+        extendGetterSetter(properties.shift());
       }
     }
 
@@ -15564,6 +15767,32 @@
       }
     };
 
+    p.createJavaArray = function createJavaArray(type, bounds) {
+      var result = null;
+      if (typeof bounds[0] === 'number') {
+        var itemsCount = 0 | bounds[0];
+        if (bounds.length <= 1) {
+          if (type === "int") {
+            result = new Int32Array(itemsCount);
+          } else if (type === "float") {
+            result = new Float32Array(itemsCount);
+          } else {
+            result = new Array(itemsCount);
+          }
+          for (var i = 0; i < itemsCount; ++i) {
+            result[i] = 0;
+          }
+        } else {
+          result = [];
+          var newBounds = bounds.slice(1);
+          for (var j = 0; j < itemsCount; ++j) {
+            result.push(createJavaArray(type, newBounds));
+          }
+        }
+      }
+      return result;
+    };
+
     //////////////////////////////////////////////////////////////////////////
     // Event handling
     //////////////////////////////////////////////////////////////////////////
@@ -15583,12 +15812,20 @@
       p.pmouseX = p.mouseX;
       p.pmouseY = p.mouseY;
 
+      // Find element offset
       if (element.offsetParent) {
         do {
           offsetX += element.offsetLeft;
           offsetY += element.offsetTop;
         } while ((element = element.offsetParent));
       }
+      
+      // Find Scroll offset
+      element = curElement;
+      do {
+        offsetX -= element.scrollLeft || 0;
+        offsetY -= element.scrollTop || 0;
+      } while ((element = element.parentNode));
 
       // Add padding and border style widths to offset
       offsetX += stylePaddingLeft;
@@ -15597,10 +15834,8 @@
       offsetX += styleBorderLeft;
       offsetY += styleBorderTop;
 
-      // Dropping support for IE clientX and clientY, switching to pageX and pageY so we don't have to calculate scroll offset.
-      // Removed in ticket #184. See rev: 2f106d1c7017fed92d045ba918db47d28e5c16f4
-      p.mouseX = e.pageX - offsetX;
-      p.mouseY = e.pageY - offsetY;
+      p.mouseX = e.clientX - offsetX;
+      p.mouseY = e.clientY - offsetY;
 
       if (typeof p.mouseMoved === "function" && !p.__mousePressed) {
         p.mouseMoved();
@@ -15672,8 +15907,26 @@
     //////////////////////////////////////////////////////////////////////////
     // Keyboard Events
     //////////////////////////////////////////////////////////////////////////
+    
+    function keyCodeMap(code){
+      // Coded keys
+      if (codedKeys.indexOf(code) >= 0) {
+        p.keyCode = code;
+        if (code === p.INS) {
+          p.keyCode = 155; 
+        }
+        return PConstants.CODED;
+      }
+      switch(code){
+        case 13:
+          return 10;  // Enter
+        case 46:
+          return 127; // Delete
+      }
+      return code;
+    }
 
-    function keyCodeMap(code, shift) {
+    function charCodeMap(code, shift) {
       // Letters
       if (code >= 65 && code <= 90) { // A-Z
         // Keys return ASCII for upcased letters.
@@ -15712,12 +15965,6 @@
             return 41; // )
           }
         }
-      }
-
-      // Coded keys
-      else if (codedKeys.indexOf(code) >= 0) { // SHIFT, CONTROL, ALT, LEFT, RIGHT, UP, DOWN
-        p.keyCode = code;
-        return PConstants.CODED;
       }
 
       // Symbols and their shift-symbols
@@ -15759,39 +16006,177 @@
       return code;
     }
 
-    attach(document, "keydown", function(e) {
-      p.__keyPressed = true;
-      p.keyCode = null;
-      p.key = keyCodeMap(e.keyCode, e.shiftKey);
+    // used to reproduce P5 key strokes (normally the first stroke)
+    function normalKeyDown(){
+      var tempKeyCode;
+      p.keyPressed();
+      tempKeyCode = p.keyCode;
+      p.keyCode = 0;
+      p.keyTyped();
+      p.keyCode = tempKeyCode;
+    }
 
-      if (typeof p.keyPressed === "function") {
-        p.keyPressed();
+    // used to reproduce P5 key strokes (generally the refiring of keys)
+    function refireKeyDown(){
+      var tempKeyCode;
+      p.keyPressed();
+      tempKeyCode = p.keyCode;
+      p.keyCode = 0;
+      p.keyTyped();
+      p.keyCode = tempKeyCode;
+    }
+
+    // event listeners call this function in order to deal with the keys being pressed
+    function keyFunc(e, type) {
+      var tempKeyCode;
+      p.key = keyCodeMap(e.keyCode, e.shiftKey);
+      if (type === "keypress") {
+        if (e.keyCode === e.charCode) {  // Hack for Google Chrome that bypasses problem with keys being the same keyCode
+          p.keyCode = -1;               // for keydown and keypress - like s and F4 give the same keyCode of 115
+        }
       }
+      switch (p.keyCode) {
+        case 19:  // Pause-Break
+        case 33:  // Page Up
+        case 34:  // Page Down
+        case 35:  // End
+        case 36:  // Home
+        case 37:  // Left Arrow
+        case 38:  // Up Arrow
+        case 39:  // Right Arrow
+        case 40:  // Down Arrow
+        case 45:  // Insert
+        case 112: // F1
+        case 113: // F2
+        case 114: // F3
+        case 115: // F4
+        case 116: // F5
+        case 117: // F6
+        case 118: // F7
+        case 119: // F8
+        case 120: // F9
+        case 121: // F10
+        case 122: // F11
+        case 123: // F12
+        case 145: // Scroll Lock
+        case 155: // Insert
+        case 224: // NumPad Up
+        case 225: // NumPad Down
+        case 226: // NumPad Left
+        case 227: // NumPad Right
+          if (type === "keydown") {
+            if (gRefire) {
+              p.keyReleased();
+              p.keyPressed();
+            } else {
+              p.keyPressed();
+              gRefire = true;
+            }
+          } else if (type === "keypress") {
+            if (firstCodedDown) {
+              firstCodedDown = false;
+            } else {
+              p.keyReleased();
+              p.keyPressed();
+            }
+          } else if (type === "keyup") {
+            p.keyReleased();
+            if (firstCodedDown === false) { firstCodedDown = true; }
+            if (gRefire){ gRefire = false; }
+          }
+          break;
+        case 16:  // Shift
+        case 17:  // Ctrl
+        case 18:  // Alt
+        case 20:  // Caps Lock
+        case 144: // Num Lock
+          if (type === "keydown") {
+            p.keyPressed();
+          } else if (type === "keyup") {
+            p.keyReleased();
+          }
+          break;
+        case 46:  // Delete
+        case 13: // Enter
+          if (type === "keydown") {
+            if (firstEDGKeyDown === true) {
+              firstEDGKeyDown = false;
+              normalKeyDown();
+            } else {
+              refireKeyDown();
+            }
+          } else if (type === "keypress") {
+            if (firstEDMKeyDown === true) {
+              firstEDMKeyDown = false;
+            } else {
+              refireKeyDown();
+            }
+          } else if (type === "keyup") {
+            p.keyCode = e.keyCode;
+            p.keyReleased();
+            if (firstEDGKeyDown === false) { firstEDGKeyDown = true; }
+            if (firstEDMKeyDown === false) { firstEDMKeyDown = true; }
+          }
+          break;
+        default:
+          if (p.keyCode === -1) {
+            p.keyCode = e.keyCode;
+          }
+          if (e.keyCode === 0) {
+            p.key = charCodeMap(e.charCode, e.shiftKey);  // dealing with Mozilla key strokes
+            if (type === "keypress") {
+              if (firstMKeyDown === true) {
+                firstMKeyDown = false;
+              } else {
+                refireKeyDown();
+              }
+            } else if (type === "keyup") {
+              p.keyCode = e.keyCode;
+              p.keyReleased();
+              if (firstMKeyDown === false) { firstMKeyDown = true; }
+            }
+          } else {
+            p.key = charCodeMap(e.keyCode, e.shiftKey);  // dealing with Google key strokes
+            if (type === "keydown") {
+              if (firstGKeyDown === true) {
+                firstGKeyDown = false;
+                normalKeyDown();
+              } else {
+                refireKeyDown();
+              }
+            } else if (type === "keyup") {
+              p.keyCode = e.keyCode;
+              p.keyReleased();
+              if (firstMKeyDown === false) { firstMKeyDown = true; }
+              if (firstGKeyDown === false) { firstGKeyDown = true; }
+            }
+          }
+          break;
+      }   
+    }
+
+    attach(document, "keydown", function(e) {
+      p.keyCode = e.keyCode;
+      p.__keyPressed = true;
+      p.key = keyCodeMap(e.keyCode, e.shiftKey);
+      if (p.key !== PConstants.CODED) {
+        p.key = charCodeMap(e.keyCode, e.shiftKey);
+      }
+      keyFunc(e, "keydown");
+    });
+    
+    attach(document, "keypress", function (e) {
+      keyFunc(e, "keypress");
     });
 
     attach(document, "keyup", function(e) {
-      p.keyCode = null;
-      p.key = keyCodeMap(e.keyCode, e.shiftKey);
-
-      //TODO: This needs to only be made false if all keys have been released.
+      p.keyCode = e.keyCode;
       p.__keyPressed = false;
-
-      if (typeof p.keyReleased === "function") {
-        p.keyReleased();
+      p.key = keyCodeMap(e.keyCode, e.shiftKey);
+      if (p.key !== PConstants.CODED) {
+        p.key = charCodeMap(e.keyCode, e.shiftKey);
       }
-    });
-
-    attach(document, "keypress", function (e) {
-      // In Firefox, e.keyCode is not currently set with keypress.
-      //
-      // keypress will always happen after a keydown, so p.keyCode and p.key
-      // should remain correct. Some browsers (chrome) refire keydown when
-      // key repeats happen, others (firefox) don't. Either way keyCode and
-      // key should remain correct.
-
-      if (p.keyTyped) {
-        p.keyTyped();
-      }
+      keyFunc(e, "keyup");
     });
 
     // Place-holder for debugging function
@@ -15804,10 +16189,10 @@
 
     // Send aCode Processing syntax to be converted to JavaScript
     if (aCode) {
-      if(aCode instanceof Processing.Sketch) {
+      if (aCode instanceof Processing.Sketch) {
         // Use sketch as is
         curSketch = aCode;
-      } else if(typeof aCode === "function") {
+      } else if (typeof aCode === "function") {
         // Wrap function with default sketch parameters
         curSketch = new Processing.Sketch(aCode);
       } else {
@@ -15865,19 +16250,28 @@
       // Step through the libraries that were attached at doc load...
       for (var i in Processing.lib) {
         if (Processing.lib.hasOwnProperty(i)) {
-          // Init the libraries in the context of this p_instance
-          Processing.lib[i].call(this);
+          if(Processing.lib[i].hasOwnProperty("attach")) {
+            // use attach function if present
+            Processing.lib[i].attach(p);
+          } else if(Processing.lib[i] instanceof Function)  {
+            // Init the libraries in the context of this p_instance (legacy)
+            Processing.lib[i].call(this);
+          }
         }
       }
 
       var executeSketch = function(processing) {
         // Don't start until all specified images and fonts in the cache are preloaded
         if (!curSketch.imageCache.pending && curSketch.fonts.pending()) {
-          curSketch.attach(processing, PConstants);
+          curSketch.attach(processing, defaultScope);
 
           // Run void setup()
           if (processing.setup) {
             processing.setup();
+            // if any transforms were performed in setup reset to identify matrix so draw loop is unpoluted
+            if (!curSketch.use3DContext) {
+              curContext.setTransform(1, 0, 0, 1, 0, 0);
+            }
           }
 
           // some pixels can be cached, flushing
@@ -15907,11 +16301,15 @@
 
   };
 
+  Processing.prototype = defaultScope;
+
   // Processing global methods and constants for the parser
   function getGlobalMembers() {
+    // The names array contains the names of everything that is inside "p."
+    // When something new is added to "p." it must also be added to this list.
     var names = [ /* this code is generated by jsglobals.js */
       "abs", "acos", "alpha", "ambient", "ambientLight", "append", "applyMatrix",
-      "arc", "arrayCopy", "ArrayList", "asin", "atan", "atan2", "background",
+      "arc", "arrayCopy", "asin", "atan", "atan2", "background",
       "beginCamera", "beginDraw", "beginShape", "bezier", "bezierDetail",
       "bezierPoint", "bezierTangent", "bezierVertex", "binary", "blend",
       "blendColor", "blit_resize", "blue", "boolean", "box", "breakShape",
@@ -15925,7 +16323,7 @@
       "expand", "externals", "fill", "filter", "filter_bilinear",
       "filter_new_scanline", "float", "floor", "focused", "frameCount",
       "frameRate", "frustum", "get", "glyphLook", "glyphTable", "green",
-      "HashMap", "height", "hex", "hint", "hour", "hue", "image", "imageMode",
+      "height", "hex", "hint", "hour", "hue", "image", "imageMode",
       "Import", "int", "intersect", "join", "key", "keyCode", "keyPressed",
       "keyReleased", "keyTyped", "lerp", "lerpColor", "lightFalloff", "lights",
       "lightSpecular", "line", "link", "loadBytes", "loadFont", "loadGlyphs",
@@ -15936,24 +16334,24 @@
       "mouseReleased", "mouseScroll", "mouseScrolled", "mouseX", "mouseY",
       "name", "nf", "nfc", "nfp", "nfs", "noCursor", "noFill", "noise",
       "noiseDetail", "noiseSeed", "noLights", "noLoop", "norm", "normal",
-      "noSmooth", "noStroke", "noTint", "ortho", "peg", "perspective", "PImage",
+      "noSmooth", "noStroke", "noTint", "ortho", "peg", "perspective", "PFont", "PImage",
       "pixels", "PMatrix2D", "PMatrix3D", "PMatrixStack", "pmouseX", "pmouseY",
       "point", "pointLight", "popMatrix", "popStyle", "pow", "print",
-      "printCamera", "println", "printMatrix", "printProjection", "PShape",
-      "pushMatrix", "pushStyle", "PVector", "quad", "radians", "random",
+      "printCamera", "println", "printMatrix", "printProjection", "PShape","PShapeSVG",
+      "pushMatrix", "pushStyle", "quad", "radians", "random",
       "Random", "randomSeed", "rect", "rectMode", "red", "redraw",
       "requestImage", "resetMatrix", "reverse", "rotate", "rotateX", "rotateY",
-      "rotateZ", "round", "saturation", "save", "saveStrings", "scale",
+      "rotateZ", "round", "saturation", "save", "saveFrame", "saveStrings", "scale",
       "screenX", "screenY", "screenZ", "second", "set", "setup", "shape",
       "shapeMode", "shared", "shininess", "shorten", "sin", "size", "smooth",
       "sort", "specular", "sphere", "sphereDetail", "splice", "split",
       "splitTokens", "spotLight", "sq", "sqrt", "status", "str", "stroke",
       "strokeCap", "strokeJoin", "strokeWeight", "subset", "tan", "text",
-      "textAlign", "textAscent", "textDescent", "textFont", "textMode",
-      "textSize", "texture", "textureMode", "textWidth", "tint", "translate",
-      "triangle", "trim", "unbinary", "unhex", "updatePixels", "use3DContext",
-      "vertex", "width", "XMLElement", "year", "__frameRate", "__keyPressed",
-      "__mousePressed"];
+      "textAlign", "textAscent", "textDescent", "textFont", "textLeading",
+      "textMode", "textSize", "texture", "textureMode", "textWidth", "tint",
+      "translate", "triangle", "trim", "unbinary", "unhex", "updatePixels",
+      "use3DContext", "vertex", "width", "XMLElement", "year", "__frameRate",
+       "__keyPressed", "__mousePressed", "__int_cast"];
 
     var members = {};
     var i, l;
@@ -15972,11 +16370,39 @@
     }
     return members;
   }
+  
+/*
 
-  // Parser starts
+    Parser converts Java-like syntax into JavaScript.
+    Creates an Abstract Syntax Tree -- "Light AST" from the Java-like code.
+
+    It is an object tree. The root object is created from the AstRoot class, which contains statements.
+
+    A statement object can be of type: AstForStatement, AstCatchStatement, AstPrefixStatement, AstMethod, AstClass,
+    AstInterface, AstFunction, AstStatementBlock and AstLabel.
+
+    AstPrefixStatement can be a statement of type: if, switch, while, with, do, else, finally, return, throw, try, break, and continue.
+
+    These object's toString function returns the JavaScript code for the statement.
+
+    Any processing calls need "processing." prepended to them.
+
+    Similarly, calls from inside classes need "$this_1.", prepended to them,
+    with 1 being the depth level for inner classes.
+    This includes members passed down from inheritance.
+
+    The resulting code is then eval'd and run.
+
+*/
+
+  // parser begins
   function parseProcessing(code) {
     var globalMembers = getGlobalMembers();
 
+    // masks parentheses, brackets and braces with '"A5"'
+    // where A is the bracket type, and 5 is the index in an array containing all brackets split into atoms
+    // 'while(true){}' -> 'while"B1""A2"'
+    // parentheses() = B, brackets[] = C and braces{} = A
     function splitToAtoms(code) {
       var atoms = [];
       var items = code.split(/([\{\[\(\)\]\}])/);
@@ -15998,17 +16424,20 @@
       return atoms;
     }
 
+    // replaces strings and regexs keyed by index with an array of strings
     function injectStrings(code, strings) {
       return code.replace(/'(\d+)'/g, function(all, index) {
         var val = strings[index];
         if(val.charAt(0) === "/") {
           return val;
         } else {
-          return (/^'((?:[^'\\\n])|(?:\\.[0-9A-Fa-f]*))'$/).test(val) ? "(new processing.Character(" + val + "))" : val;
+          return (/^'((?:[^'\\\n])|(?:\\.[0-9A-Fa-f]*))'$/).test(val) ? "(new $p.Character(" + val + "))" : val;
         }
       });
     }
 
+    // trims off leading and trailing spaces
+    // returns an object. object.left, object.middle, object.right, object.untrim
     function trimSpaces(string) {
       var m1 = /^\s*/.exec(string), result;
       if(m1[0].length === string.length) {
@@ -16021,6 +16450,7 @@
       return result;
     }
 
+    // simple trim of leading and trailing spaces
     function trim(string) {
       return string.replace(/^\s+/,'').replace(/\s+$/,'');
     }
@@ -16043,8 +16473,11 @@
 
     function getAtomIndex(templ) { return templ.substring(2, templ.length - 1); }
 
+    // remove carriage returns "\r"
     var codeWoExtraCr = code.replace(/\r\n?|\n\r/g, "\n");
 
+    // masks strings and regexs with "'5'", where 5 is the index in an array containing all strings and regexs
+    // also removes all comments
     var strings = [];
     var codeWoStrings = codeWoExtraCr.replace(/("(?:[^"\\\n]|\\.)*")|('(?:[^'\\\n]|\\.)*')|(([\[\(=|&!\^:?]\s*)(\/(?![*\/])(?:[^\/\\\n]|\\.)*\/[gim]*)\b)|(\/\/[^\n]*\n)|(\/\*(?:(?!\*\/)(?:.|\n))*\*\/)/g,
     function(all, quoted, aposed, regexCtx, prefix, regex, singleComment, comment) {
@@ -16080,16 +16513,18 @@
       declaredClasses[classId] = class_;
     }
 
-    // function defined below
+    // functions defined below
     var transformClassBody, transformStatementsBlock, transformStatements, transformMain, transformExpression;
 
     var classesRegex = /\b((?:(?:public|private|final|protected|static|abstract)\s+)*)(class|interface)\s+([A-Za-z_$][\w$]*\b)(\s+extends\s+[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*\b)?(\s+implements\s+[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*(?:\s*,\s*[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*\b)*)?\s*("A\d+")/g;
-    var methodsRegex = /\b((?:(?:public|private|final|protected|static|abstract)\s+)*)((?!(?:else|new|return|throw|function|public|private|protected)\b)[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*(?:\s*"C\d+")*)\s*([A-Za-z_$][\w$]*\b)\s*("B\d+")(\s*throws\s+[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*(?:\s*,\s*[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*)*)?\s*("A\d+"|;)/g;
+    var methodsRegex = /\b((?:(?:public|private|final|protected|static|abstract|synchronized)\s+)*)((?!(?:else|new|return|throw|function|public|private|protected)\b)[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*(?:\s*"C\d+")*)\s*([A-Za-z_$][\w$]*\b)\s*("B\d+")(\s*throws\s+[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*(?:\s*,\s*[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*)*)?\s*("A\d+"|;)/g;
     var fieldTest = /^((?:(?:public|private|final|protected|static)\s+)*)((?!(?:else|new|return|throw)\b)[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*(?:\s*"C\d+")*)\s*([A-Za-z_$][\w$]*\b)\s*(?:"C\d+"\s*)*([=,]|$)/;
     var cstrsRegex = /\b((?:(?:public|private|final|protected|static|abstract)\s+)*)((?!(?:new|return|throw)\b)[A-Za-z_$][\w$]*\b)\s*("B\d+")(\s*throws\s+[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*(?:\s*,\s*[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*)*)?\s*("A\d+")/g;
     var attrAndTypeRegex = /^((?:(?:public|private|final|protected|static)\s+)*)((?!(?:new|return|throw)\b)[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*(?:\s*"C\d+")*)\s*/;
     var functionsRegex = /\bfunction(?:\s+([A-Za-z_$][\w$]*))?\s*("B\d+")\s*("A\d+")/g;
 
+    // This converts classes, methods and functions into atoms, and adds them to the atoms array.
+    // classes = E, methods = D and functions = H
     function extractClassesAndMethods(code) {
       var s = code;
       s = s.replace(classesRegex, function(all) {
@@ -16104,6 +16539,8 @@
       return s;
     }
 
+    // This converts constructors into atoms, and adds them to the atoms array.
+    // constructors = G
     function extractConstructors(code, className) {
       var result = code.replace(cstrsRegex, function(all, attr, name, params, throws_, body) {
         if(name !== className) {
@@ -16115,12 +16552,14 @@
       return result;
     }
 
+    // AstParam contains the name of a parameter inside a function declaration
     function AstParam(name) {
       this.name = name;
     }
     AstParam.prototype.toString = function() {
       return this.name;
     };
+    // AstParams contains an array of AstParam objects
     function AstParams(params) {
       this.params = params;
     }
@@ -16169,13 +16608,13 @@
       s = s.replace(functionsRegex, function(all) {
         return addAtom(all, 'H');
       });
-      // new type[?] --> new ArrayList(?)
+      // new type[?] --> createJavaArray('type', [?])
       s = s.replace(/\bnew\s+([A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*)\s*("C\d+"(?:\s*"C\d+")*)/g, function(all, type, index) {
         var args = index.replace(/"C(\d+)"/g, function(all, j) { return atoms[j]; }).
-          replace(/\[\s*\]/g, "[0]").replace(/\s*\]\s*\[\s*/g, ", ");
-
-        var arrayInitializer = "(" + args.substring(1, args.length - 1) + ")";
-        return 'new ArrayList' + addAtom(arrayInitializer, 'B');
+          replace(/\[\s*\]/g, "[null]").replace(/\s*\]\s*\[\s*/g, ", ");
+        var arrayInitializer = "{" + args.substring(1, args.length - 1) + "}";
+        var createArrayArgs = "('" + type + "', " + addAtom(arrayInitializer, 'A') + ")";
+        return '$p.createJavaArray' + addAtom(createArrayArgs, 'B');
       });
       // .length() --> .length
       s = s.replace(/(\.\s*length)\s*"B\d+"/g, "$1");
@@ -16183,13 +16622,13 @@
       s = s.replace(/#([0-9A-Fa-f]{6})\b/g, function(all, digits) {
         return "0xFF" + digits;
       });
-      // delete (type)???, (int)??? -> 0|???
+      // delete (type)???, except (int)???
       s = s.replace(/"B(\d+)"(\s*(?:[\w$']|"B))/g, function(all, index, next) {
         var atom = atoms[index];
         if(!/^\(\s*[A-Za-z_$][\w$]*\b(?:\s*\.\s*[A-Za-z_$][\w$]*\b)*\s*(?:"C\d+"\s*)*\)$/.test(atom)) {
           return all;
         } else if(/^\(\s*int\s*\)$/.test(atom)) {
-          return "0|" + next;
+          return "(int)" + next;
         } else {
           var indexParts = atom.split(/"C(\d+)"/g);
           if(indexParts.length > 1) {
@@ -16201,10 +16640,22 @@
           return "" + next;
         }
       });
+      // (int)??? -> __int_cast(???)
+      s = s.replace(/\(int\)([^,\]\)\}\?\:\*\+\-\/\^\|\%\&\~]+)/g, function(all, arg) {
+        var trimmed = trimSpaces(arg);
+        return trimmed.untrim("__int_cast(" + trimmed.middle + ")");
+      });
       // super() -> $superCstr(), super. -> $super.;
       s = s.replace(/\bsuper(\s*"B\d+")/g, "$$superCstr$1").replace(/\bsuper(\s*\.)/g, "$$super$1");
+      // 000.43->0.43 and 0010f->10, but not 0010
+      s = s.replace(/\b0+((\d*)(?:\.[\d*])?(?:[eE][\-\+]?\d+)?[fF]?)\b/, function(all, numberWo0, intPart) {
+        if( numberWo0 === intPart) {
+          return all;
+        }
+        return intPart === "" ? "0" + numberWo0 : numberWo0;
+      });
       // 3.0f -> 3.0
-      s = s.replace(/\b(\.?\d+)[fF]/g, "$1");
+      s = s.replace(/\b(\.?\d+\.?)[fF]\b/g, "$1");
       // Weird (?) parsing errors with %
       s = s.replace(/([^\s])%([^=\s])/g, "$1 % $2");
       // Since frameRate() and frameRate are different things,
@@ -16278,8 +16729,8 @@
       var oldContext = replaceContext;
       // saving "this." and parameters
       var names = appendToLookupTable({"this":null}, this.params.getNames());
-      replaceContext = function(name) {
-        return names.hasOwnProperty(name) ? name : oldContext(name);
+      replaceContext = function (subject) {
+        return names.hasOwnProperty(subject.name) ? subject.name : oldContext(subject);
       };
       var result = "function";
       if(this.name) {
@@ -16301,8 +16752,8 @@
     }
     AstInlineObject.prototype.toString = function() {
       var oldContext = replaceContext;
-      replaceContext = function(name) {
-          return name === "this"? name : oldContext(name); // saving "this."
+      replaceContext = function (subject) {
+          return subject.name === "this" ? "this" : oldContext(subject); // saving "this."
       };
       var result = "";
       for(var i=0,l=this.members.length;i<l;++i) {
@@ -16349,12 +16800,13 @@
     }
 
     function replaceContextInVars(expr) {
-      return expr.replace(/(\.\s*)?(\b[A-Za-z_$][\w$]*\b)/g,
-        function(all, memberAccessSign, identifier) {
+      return expr.replace(/(\.\s*)?(\b[A-Za-z_$][\w$]*\b)(\s*\.\s*(\b[A-Za-z_$][\w$]*\b)(\s*\()?)?/g,
+        function(all, memberAccessSign, identifier, suffix, subMember, callSign) {
           if(memberAccessSign) {
             return all;
           } else {
-            return replaceContext(identifier);
+            var subject = { name: identifier, member: subMember, callSign: !!callSign };
+            return replaceContext(subject) + (suffix === undef ? "" : suffix);
           }
         });
     }
@@ -16535,13 +16987,13 @@
       this.body = body;
     }
     AstClassMethod.prototype.toString = function(){
-      var thisReplacement = replaceContext("this");
+      var thisReplacement = replaceContext({ name: "this" });
       var paramNames = appendToLookupTable({}, this.params.getNames());
       var oldContext = replaceContext;
-      replaceContext = function(name) {
-        return paramNames.hasOwnProperty(name) ? name : oldContext(name);
+      replaceContext = function (subject) {
+        return paramNames.hasOwnProperty(subject.name) ? subject.name : oldContext(subject);
       };
-      var result = "processing.addMethod(" + thisReplacement + ", '" + this.name + "', function " + this.params + " " +
+      var result = "$p.addMethod(" + thisReplacement + ", '" + this.name + "', function " + this.params + " " +
         this.body +");";
       replaceContext = oldContext;
       return result;
@@ -16550,8 +17002,9 @@
     function transformClassMethod(method) {
       var m = methodsRegex.exec(method);
       methodsRegex.lastIndex = 0;
+      var body = m[6] !== ';' ? atoms[getAtomIndex(m[6])] : "{}";
       return new AstClassMethod(m[3], transformParams(atoms[getAtomIndex(m[4])]),
-        transformStatementsBlock(atoms[getAtomIndex(m[6])]) );
+        transformStatementsBlock(body) );
     }
 
     function AstClassField(definitions, fieldType, isStatic) {
@@ -16567,7 +17020,7 @@
       return names;
     };
     AstClassField.prototype.toString = function() {
-      var thisPrefix = replaceContext("this") + ".";
+      var thisPrefix = replaceContext({ name: "this" });
       if(this.isStatic) {
         var className = this.owner.name;
         var staticDeclarations = [];
@@ -16576,14 +17029,14 @@
           var name = definition.name, staticName = className + "." + name;
           var declaration = "if(" + staticName + " === void(0)) {\n" +
             " " + staticName + " = " + definition.value + "; }\n" +
-            "processing.defineProperty(" + replaceContext("this") + ", " +
+            "$p.defineProperty(" + thisPrefix + ", " +
             "'" + name + "', { get: function(){return " + staticName + ";}, " +
             "set: function(val){" + staticName + " = val;} });\n";
           staticDeclarations.push(declaration);
         }
         return staticDeclarations.join("");
       } else {
-        return thisPrefix + this.definitions.join("; " + thisPrefix);
+        return thisPrefix + "." + this.definitions.join("; " + thisPrefix + ".");
       }
     };
 
@@ -16605,8 +17058,8 @@
     AstConstructor.prototype.toString = function() {
       var paramNames = appendToLookupTable({}, this.params.getNames());
       var oldContext = replaceContext;
-      replaceContext = function(name) {
-        return paramNames.hasOwnProperty(name) ? name : oldContext(name);
+      replaceContext = function (subject) {
+        return paramNames.hasOwnProperty(subject.name) ? subject.name : oldContext(subject);
       };
       var prefix = "function $constr_" + this.params.params.length + this.params.toString();
       var body = this.body.toString();
@@ -16679,24 +17132,24 @@
         thisClassMethods = appendToLookupTable({}, members.methods),
         thisClassInners = appendToLookupTable({}, members.innerClasses);
 
-      var oldContext = replaceContext, inConstructors = false;
-      replaceContext = function(name) {
+      var oldContext = replaceContext;
+      replaceContext = function (subject) {
+        var name = subject.name;
         if(name === "this") {
-          return selfId;
+          return subject.callSign ? selfId + ".$self" : selfId;
         } else if(thisClassFields.hasOwnProperty(name) || thisClassInners.hasOwnProperty(name)) {
           return selfId + "." + name;
         } else if(thisClassMethods.hasOwnProperty(name)) {
-          // keeping |"this." + name| for speed
-          return inConstructors ? "this.$self." + name : "this." + name;
+          return selfId + ".$self." + name;
         }
-        return oldContext(name);
+        return oldContext(subject);
       };
 
       if(this.baseClassName) {
         result += "var $super = { $upcast: " + selfId + " };\n";
         result += "function $superCstr(){" + this.baseClassName + ".apply($super,arguments)}\n";
       } else {
-        result += "function $superCstr(){processing.extendClassChain("+ selfId +")}\n";
+        result += "function $superCstr(){$p.extendClassChain("+ selfId +")}\n";
       }
 
       result += this.functions.join('\n') + '\n';
@@ -16706,9 +17159,8 @@
       result += this.methods.join('\n') + '\n';
       result += this.misc.tail;
 
-      inConstructors = true;
       result += this.cstrs.join('\n') + '\n';
-      inConstructors = false;
+
 
       result += "function $constr() {\n";
       var cstrsIfs = [];
@@ -16775,7 +17227,7 @@
     }
     AstInterface.prototype.toString = function() {
       return "function " + this.name + "() {  throw 'This is an interface'; }\n" +
-        "processing." + this.name + " = " + this.name + ";";
+        "$p." + this.name + " = " + this.name + ";";
     };
     function AstClass(name, body) {
       this.name = name;
@@ -16793,9 +17245,8 @@
       }
       return "function " + this.name + "() {\n" + this.body + "}\n" +
         staticVars + "\n" +
-        "processing." + this.name + " = " + this.name + ";";
+        "$p." + this.name + " = " + this.name + ";";
     };
-
 
     function transformGlobalClass(class_) {
       var m = classesRegex.exec(class_); // 1 - attr, 2 - class|int, 3 - name, 4 - extends, 5 - implements, 6 - body
@@ -16822,11 +17273,11 @@
     AstMethod.prototype.toString = function(){
       var paramNames = appendToLookupTable({}, this.params.getNames());
       var oldContext = replaceContext;
-      replaceContext = function(name) {
-        return paramNames.hasOwnProperty(name) ? name : oldContext(name);
+      replaceContext = function (subject) {
+        return paramNames.hasOwnProperty(subject.name) ? subject.name : oldContext(subject);
       };
       var result = "function " + this.name + this.params + " " + this.body + "\n" +
-        "processing." + this.name + " = " + this.name + ";";
+        "$p." + this.name + " = " + this.name + ";";
       replaceContext = oldContext;
       return result;
     };
@@ -16841,6 +17292,7 @@
 
     function preStatementsTransform(statements) {
       var s = statements;
+      // turns multiple catch blocks into one, because we have no way to properly get into them anyway.
       s = s.replace(/\b(catch\s*"B\d+"\s*"A\d+")(\s*catch\s*"B\d+"\s*"A\d+")+/g, "$1");
       return s;
     }
@@ -16883,6 +17335,8 @@
       var res = [];
       statements = preStatementsTransform(statements);
       var lastIndex = 0, m, space;
+      // m contains the matches from the nextStatement regexp, null if there are no matches.
+      // nextStatement.exec starts searching at nextStatement.lastIndex.
       while((m = nextStatement.exec(statements)) !== null) {
         if(m[1] !== undef) { // catch, for ...
           var i = statements.lastIndexOf('"B', nextStatement.lastIndex);
@@ -16962,8 +17416,8 @@
 
       // replacing context only when necessary
       if(!isLookupTableEmpty(localNames)) {
-        replaceContext = function(name) {
-          return localNames.hasOwnProperty(name) ? name : oldContext(name);
+        replaceContext = function (subject) {
+          return localNames.hasOwnProperty(subject.name) ? subject.name : oldContext(subject);
         };
       }
 
@@ -16982,18 +17436,19 @@
     }
     AstRoot.prototype.toString = function() {
       var localNames = getLocalNames(this.statements);
-      replaceContext = function(name) {
+      replaceContext = function (subject) {
+        var name = subject.name;
         if(localNames.hasOwnProperty(name)) {
           return name;
-        } else if(globalMembers.hasOwnProperty(name)) {
-          return "processing." + name;
-        } else if(PConstants.hasOwnProperty(name)) {
-          return "$constants." + name;
+        } else if(globalMembers.hasOwnProperty(name) ||
+                  PConstants.hasOwnProperty(name) || 
+                  defaultScope.hasOwnProperty(name)) {
+          return "$p." + name;
         }
         return name;
       };
       var result = "// this code was autogenerated from PJS\n" +
-        "(function(processing, $constants) {\n" +
+        "(function($p) {\n" +
         this.statements.join('') + "\n})";
       replaceContext = null;
       return result;
@@ -17058,8 +17513,9 @@
     var transformed = transformMain();
     generateMetadata(transformed);
 
-    // remove empty extra lines with space
     var redendered = transformed.toString();
+
+    // remove empty extra lines with space
     redendered = redendered.replace(/\s*\n(?:[\t ]*\n)+/g, "\n\n");
 
     return injectStrings(redendered, strings);
@@ -17122,6 +17578,7 @@
     }
 
     // Check if 3D context is invoked -- this is not the best way to do this.
+    // Following regex replaces strings, comments and regexs with an empty string
     var codeWoStrings = aCode.replace(/("(?:[^"\\\n]|\\.)*")|('(?:[^'\\\n]|\\.)*')|(([\[\(=|&!\^:?]\s*)(\/(?![*\/])(?:[^\/\\\n]|\\.)*\/[gim]*)\b)|(\/\/[^\n]*\n)|(\/\*(?:(?!\*\/)(?:.|\n))*\*\/)/g, "");
     if (codeWoStrings.match(/\bsize\((?:.+),(?:.+),\s*(OPENGL|P3D)\s*\);/)) {
       sketch.use3DContext = true;
@@ -17410,6 +17867,14 @@
   // Share lib space
   Processing.lib = {};
 
+  Processing.registerLibrary = function(name, desc) {
+    Processing.lib[name] = desc;
+
+    if(desc.hasOwnProperty("init")) {
+      desc.init(defaultScope);
+    }
+  };
+
   // Store Processing instances
   Processing.instances = [];
   Processing.instanceIds = {};
@@ -17530,13 +17995,13 @@
       }
     };
     this.sourceCode = undefined;
-    this.attach = function(processing, constants) {
+    this.attach = function(processing) {
       // either attachFunction or sourceCode must be present on attach
       if(typeof this.attachFunction === "function") {
-        this.attachFunction(processing, constants);
+        this.attachFunction(processing);
       } else if(this.sourceCode) {
         var func = eval(this.sourceCode);
-        func(processing, constants);
+        func(processing);
         this.attachFunction = func;
       } else {
         throw "Unable to attach sketch to the processing instance";
