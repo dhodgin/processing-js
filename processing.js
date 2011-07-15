@@ -15185,9 +15185,26 @@
       return p.shared.a | p.shared.r | p.shared.g | p.shared.b;
     };
 
+    var blendFuncs = {};
+    blendFuncs[PConstants.BLEND] = p.modes.blend;
+    blendFuncs[PConstants.ADD] = p.modes.add;
+    blendFuncs[PConstants.SUBTRACT] = p.modes.subtract;
+    blendFuncs[PConstants.LIGHTEST] = p.modes.lightest;
+    blendFuncs[PConstants.DARKEST] = p.modes.darkest;
+    blendFuncs[PConstants.REPLACE] = p.modes.replace;
+    blendFuncs[PConstants.DIFFERENCE] = p.modes.difference;
+    blendFuncs[PConstants.EXCLUSION] = p.modes.exclusion;
+    blendFuncs[PConstants.MULTIPLY] = p.modes.multiply;
+    blendFuncs[PConstants.SCREEN] = p.modes.screen;
+    blendFuncs[PConstants.OVERLAY] = p.modes.overlay;
+    blendFuncs[PConstants.HARD_LIGHT] = p.modes.hard_light;
+    blendFuncs[PConstants.SOFT_LIGHT] = p.modes.soft_light;
+    blendFuncs[PConstants.DODGE] = p.modes.dodge;
+    blendFuncs[PConstants.BURN] = p.modes.burn;
+
     p.blit_resize = function(img, srcX1, srcY1, srcX2, srcY2, destPixels,
-                              screenW, screenH, destX1, destY1, destX2, destY2, mode) {
-      var x, y; // iterator vars
+                             screenW, screenH, destX1, destY1, destX2, destY2, mode) {
+      var x, y;
       if (srcX1 < 0) {
         srcX1 = 0;
       }
@@ -15204,19 +15221,19 @@
       var srcH = srcY2 - srcY1;
       var destW = destX2 - destX1;
       var destH = destY2 - destY1;
-      var smooth = true; // may as well go with the smoothing these days
-      if (!smooth) {
-        srcW++;
-        srcH++;
-      }
+
       if (destW <= 0 || destH <= 0 || srcW <= 0 || srcH <= 0 || destX1 >= screenW ||
           destY1 >= screenH || srcX1 >= img.width || srcY1 >= img.height) {
         return;
       }
+
       var dx = Math.floor(srcW / destW * PConstants.PRECISIONF);
       var dy = Math.floor(srcH / destH * PConstants.PRECISIONF);
-      p.shared.srcXOffset = Math.floor(destX1 < 0 ? -destX1 * dx : srcX1 * PConstants.PRECISIONF);
-      p.shared.srcYOffset = Math.floor(destY1 < 0 ? -destY1 * dy : srcY1 * PConstants.PRECISIONF);
+
+      var pshared = p.shared;
+
+      pshared.srcXOffset = Math.floor(destX1 < 0 ? -destX1 * dx : srcX1 * PConstants.PRECISIONF);
+      pshared.srcYOffset = Math.floor(destY1 < 0 ? -destY1 * dy : srcY1 * PConstants.PRECISIONF);
       if (destX1 < 0) {
         destW += destX1;
         destX1 = 0;
@@ -15227,336 +15244,47 @@
       }
       destW = Math.min(destW, screenW - destX1);
       destH = Math.min(destH, screenH - destY1);
-      // changed in 0.9, TODO
+
       var destOffset = destY1 * screenW + destX1;
       var destColor;
-      p.shared.srcBuffer = img.imageData.data;
-      if (smooth) {
-        // use bilinear filtering
-        p.shared.iw = img.width;
-        p.shared.iw1 = img.width - 1;
-        p.shared.ih1 = img.height - 1;
-        switch (mode) {
-        case PConstants.BLEND:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.blend(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.blend(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.ADD:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.add(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.add(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.SUBTRACT:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.subtract(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.subtract(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.LIGHTEST:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.lightest(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.lightest(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.DARKEST:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.darkest(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.darkest(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.REPLACE:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              if (img.format !== PConstants.RGB && destPixels[(destOffset + x) * 4] !== 255) {
-                destColor = p.color.toArray(p.modes.blend(destColor, p.filter_bilinear()));
-              } else {
-                destColor = p.color.toArray(p.filter_bilinear());
-              }
-              //destPixels[destOffset + x] = p.filter_bilinear();
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.DIFFERENCE:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.difference(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.difference(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.EXCLUSION:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.exclusion(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.exclusion(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.MULTIPLY:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.multiply(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.multiply(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.SCREEN:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.screen(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.screen(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.OVERLAY:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.overlay(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.overlay(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.HARD_LIGHT:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.hard_light(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.hard_light(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.SOFT_LIGHT:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.soft_light(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.soft_light(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.DODGE:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.dodge(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.dodge(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
-        case PConstants.BURN:
-          for (y = 0; y < destH; y++) {
-            p.filter_new_scanline();
-            for (x = 0; x < destW; x++) {
-              // changed for 0.9
-              destColor = p.color.toInt(destPixels[(destOffset + x) * 4],
-                                        destPixels[((destOffset + x) * 4) + 1],
-                                        destPixels[((destOffset + x) * 4) + 2],
-                                        destPixels[((destOffset + x) * 4) + 3]);
-              destColor = p.color.toArray(p.modes.burn(destColor, p.filter_bilinear()));
-              //destPixels[destOffset + x] = p.modes.burn(destPixels[destOffset + x], p.filter_bilinear());
-              destPixels[(destOffset + x) * 4] = destColor[0];
-              destPixels[(destOffset + x) * 4 + 1] = destColor[1];
-              destPixels[(destOffset + x) * 4 + 2] = destColor[2];
-              destPixels[(destOffset + x) * 4 + 3] = destColor[3];
-              p.shared.sX += dx;
-            }
-            destOffset += screenW;
-            p.shared.srcYOffset += dy;
-          }
-          break;
+
+      pshared.srcBuffer = img.imageData.data;
+      pshared.iw = img.width;
+      pshared.iw1 = img.width - 1;
+      pshared.ih1 = img.height - 1;
+
+      // cache for speed
+      var filterBilinear = p.filter_bilinear,
+        filterNewScanline = p.filter_new_scanline,
+        blendFunc = blendFuncs[mode],
+        blendedColor,
+        idx,
+        ALPHA_MASK = PConstants.ALPHA_MASK,
+        RED_MASK = PConstants.RED_MASK,
+        GREEN_MASK = PConstants.GREEN_MASK,
+        BLUE_MASK = PConstants.BLUE_MASK;
+
+      for (y = 0; y < destH; y++) {
+        filterNewScanline();
+        for (x = 0; x < destW; x++) {
+          idx = (destOffset + x) * 4;
+
+          destColor = (destPixels[idx + 3] << 24) &
+                      ALPHA_MASK | (destPixels[idx] << 16) &
+                      RED_MASK   | (destPixels[idx + 1] << 8) &
+                      GREEN_MASK |  destPixels[idx + 2] & BLUE_MASK;
+
+          blendedColor = blendFunc(destColor, filterBilinear());
+
+          destPixels[idx]     = (blendedColor & RED_MASK) >>> 16;
+          destPixels[idx + 1] = (blendedColor & GREEN_MASK) >>> 8;
+          destPixels[idx + 2] = (blendedColor & BLUE_MASK);
+          destPixels[idx + 3] = (blendedColor & ALPHA_MASK) >>> 24;
+
+          pshared.sX += dx;
         }
+        destOffset += screenW;
+        pshared.srcYOffset += dy;
       }
     };
 
