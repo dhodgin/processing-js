@@ -4,7 +4,7 @@ PShape t;
 PShape tsmall;
 
 size(100,100);
-t = loadShape("svg/T.svg");
+t = loadShape("svg/t.svg");
 tsmall = loadShape("svg/tsmall.svg");
 
 background(102);
@@ -28,4 +28,5 @@ shape(tsmall, 0,50,45,45);
 // Draw right bot
 tsmall.enableStyle();
 shape(tsmall, 50,50,45,45);
+
 exit();

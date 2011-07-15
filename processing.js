@@ -1,4 +1,6 @@
-(function(window, document, Math, nop, eval_, undef) {
+(function(window, document, Math, undef) {
+
+  var nop = function(){};
 
   var debug = (function() {
     if ("console" in window) {
@@ -24,17 +26,6 @@
   };
 
   var isDOMPresent = ("document" in this) && !("fake" in this.document);
-
-  /* Browsers fixes start */
-  (function fixOperaCreateImageData() {
-    try {
-      if (!("createImageData" in CanvasRenderingContext2D.prototype)) {
-        CanvasRenderingContext2D.prototype.createImageData = function (sw, sh) {
-          return new ImageData(sw, sh);
-        };
-      }
-    } catch(e) {}
-  }());
 
   // Typed Arrays: fallback to WebGL arrays or Native JS arrays if unavailable
   function setupTypedArray(name, fallback) {
@@ -465,7 +456,7 @@
       if (arguments.length === 0) {
         array = [];
       } else if (arguments.length > 0 && typeof arguments[0] !== 'number') {
-        array = arguments[0];
+        array = arguments[0].toArray();
       } else {
         array = [];
         array.length = 0 | arguments[0];
@@ -648,7 +639,7 @@
        * @returns {ArrayList} a clone of this ArrayList instance
        */
       this.clone = function() {
-        return new ArrayList(array.slice(0));
+        return new ArrayList(this);
       };
 
       /**
@@ -1081,7 +1072,7 @@
     PVector.prototype = {
       set: function(v, y, z) {
         if (arguments.length === 1) {
-          this.set(v.x || v[0], v.y || v[1], v.z || v[2]);
+          this.set(v.x || v[0] || 0, v.y || v[1] || 0, v.z || v[2] || 0);
         } else {
           this.x = v;
           this.y = y;
@@ -1489,7 +1480,6 @@
     var pgraphicsMode = (arguments.length === 0);
     if (pgraphicsMode) {
       curElement = document.createElement("canvas");
-      p.canvas = curElement;
     }
 
     // PJS specific (non-p5) methods and properties to externalize
@@ -6921,14 +6911,6 @@
       return  p.color.toHSB(colInt)[0];
     };
 
-    var verifyChannel = function(aColor) {
-      if (aColor.constructor === Array) {
-        return aColor;
-      } else {
-        return p.color(aColor);
-      }
-    };
-
     /**
     * Extracts the red value from a color, scaled to match current colorMode().
     * This value is always returned as a float so be careful not to assign it to an int value.
@@ -7045,26 +7027,6 @@
       var a = parseFloat(p.lerp(a1, a2, amt) * colorModeA);
 
       return p.color.toInt(r, g, b, a);
-    };
-
-    // Forced default color mode for #aaaaaa style
-    /**
-    * Convert 3 int values to a color in the default color mode RGB even if curColorMode is not set to RGB
-    *
-    * @param {int} aValue1              range for the red color
-    * @param {int} aValue2              range for the green color
-    * @param {int} aValue3              range for the blue color
-    *
-    * @returns {Color}
-    *
-    * @see color
-    */
-    p.defaultColor = function(aValue1, aValue2, aValue3) {
-      var tmpColorMode = curColorMode;
-      curColorMode = PConstants.RGB;
-      var c = p.color(aValue1 / 255 * colorModeX, aValue2 / 255 * colorModeY, aValue3 / 255 * colorModeZ);
-      curColorMode = tmpColorMode;
-      return c;
     };
 
     /**
@@ -7408,13 +7370,13 @@
     * @see popMatrix
     * @see pushMatrix
     */
-    p.rotateZ = function(angleInRadians) {
+    Drawing2D.prototype.rotateZ = function() {
+      throw "rotateZ() is not supported in 2D mode. Use rotate(float) instead.";
+    };
+
+    Drawing3D.prototype.rotateZ = function(angleInRadians) {
       forwardTransform.rotateZ(angleInRadians);
       reverseTransform.invRotateZ(angleInRadians);
-      if (p.use3DContext) {
-        return;
-      }
-      curContext.rotate(angleInRadians);
     };
 
     /**
@@ -7468,7 +7430,9 @@
     * @see pushMatrix
     */
     Drawing2D.prototype.rotate = function(angleInRadians) {
-      p.rotateZ(angleInRadians);
+      forwardTransform.rotateZ(angleInRadians);
+      reverseTransform.invRotateZ(angleInRadians);
+      curContext.rotate(angleInRadians);
     };
 
     Drawing3D.prototype.rotate = function(angleInRadians) {
@@ -7944,10 +7908,9 @@
     };
 
     // PGraphics methods
-    // TODO: These functions are suppose to be called before any operations are called on the
-    //       PGraphics object. They currently do nothing.
-    p.beginDraw = function() {};
-    p.endDraw = function() {};
+    // These functions exist only for compatibility with P5
+    p.beginDraw = nop;
+    p.endDraw = nop;
 
     // Imports an external Processing.js library
     p.Import = function(lib) {
@@ -8351,7 +8314,7 @@
     * @see saveStrings
     * @see saveBytes
     */
-    p.loadBytes = function(url, strings) {
+    p.loadBytes = function(url) {
       var string = ajax(url);
       var ret = [];
 
@@ -9033,11 +8996,11 @@
     * @see dist
     */
     p.mag = function(a, b, c) {
-      if (arguments.length === 2) {
-        return Math.sqrt(a * a + b * b);
-      } else if (arguments.length === 3) {
+      if (c) {
         return Math.sqrt(a * a + b * b + c * c);
       }
+
+      return Math.sqrt(a * a + b * b);
     };
 
     /**
@@ -11416,32 +11379,18 @@
      * @see curveVertex
      * @see texture
      */
-    DrawingShared.prototype.vertex = function() {
+
+    Drawing2D.prototype.vertex = function(x, y, u, v) {
       var vert = [];
 
       if (firstVert) { firstVert = false; }
-
-      if (arguments.length === 4) { //x, y, u, v
-        vert[0] = arguments[0];
-        vert[1] = arguments[1];
-        vert[2] = 0;
-        vert[3] = arguments[2];
-        vert[4] = arguments[3];
-      } else { // x, y, z, u, v
-        vert[0] = arguments[0];
-        vert[1] = arguments[1];
-        vert[2] = arguments[2] || 0;
-        vert[3] = arguments[3] || 0;
-        vert[4] = arguments[4] || 0;
-      }
-
       vert["isVert"] = true;
 
-      return vert;
-    };
-
-    Drawing2D.prototype.vertex = function() {
-      var vert = DrawingShared.prototype.vertex.apply(this, arguments);
+      vert[0] = x;
+      vert[1] = y;
+      vert[2] = 0;
+      vert[3] = u;
+      vert[4] = v;
 
       // fill and stroke color
       vert[5] = currentFillColor;
@@ -11450,8 +11399,17 @@
       vertArray.push(vert);
     };
 
-    Drawing3D.prototype.vertex = function() {
-      var vert = DrawingShared.prototype.vertex.apply(this, arguments);
+    Drawing3D.prototype.vertex = function(x, y, z, u, v) {
+      var vert = [];
+
+      if (firstVert) { firstVert = false; }
+      vert["isVert"] = true;
+
+      vert[0] = x;
+      vert[1] = y;
+      vert[2] = z || 0;
+      vert[3] = u || 0;
+      vert[4] = v || 0;
 
       // fill rgba
       vert[5] = fillStyle[0];
@@ -12921,14 +12879,7 @@
     * @see strokeCap
     * @see beginShape
     */
-    Drawing2D.prototype.line = function() {
-      var x1, y1, x2, y2;
-
-      x1 = arguments[0];
-      y1 = arguments[1];
-      x2 = arguments[2];
-      y2 = arguments[3];
-
+    Drawing2D.prototype.line = function(x1, y1, x2, y2) {
       // a line is only defined if it has different start and end coordinates.
       // If they are the same, we call point instead.
       if (x1===x2 && y1===y2) {
@@ -12961,23 +12912,12 @@
       }
     };
 
-    Drawing3D.prototype.line = function() {
-      var x1, y1, z1, x2, y2, z2;
-
-      if (arguments.length === 6) {
-        x1 = arguments[0];
-        y1 = arguments[1];
-        z1 = arguments[2];
-        x2 = arguments[3];
-        y2 = arguments[4];
-        z2 = arguments[5];
-      } else if (arguments.length === 4) {
-        x1 = arguments[0];
-        y1 = arguments[1];
-        z1 = 0;
-        x2 = arguments[2];
-        y2 = arguments[3];
+    Drawing3D.prototype.line = function(x1, y1, z1, x2, y2, z2) {
+      if (y2 === undef || z2 === undef) { // 2D line called in 3D context
         z2 = 0;
+        y2 = x2;
+        x2 = z1;
+        z1 = 0;
       }
 
       // a line is only defined if it has different start and end coordinates.
@@ -14475,7 +14415,7 @@
     };
 
     Drawing2D.prototype.background = function(arg1, arg2, arg3, arg4) {
-      if (arg1 !== undefined) {
+      if (arg1 !== undef) {
         backgroundHelper(arg1, arg2, arg3, arg4);
       }
 
@@ -16666,6 +16606,7 @@
     DrawingPre.prototype.resetMatrix = createDrawingPreFunction("resetMatrix");
     DrawingPre.prototype.applyMatrix = createDrawingPreFunction("applyMatrix");
     DrawingPre.prototype.rotate = createDrawingPreFunction("rotate");
+    DrawingPre.prototype.rotateZ = createDrawingPreFunction("rotateZ");
     DrawingPre.prototype.redraw = createDrawingPreFunction("redraw");
     DrawingPre.prototype.ambientLight = createDrawingPreFunction("ambientLight");
     DrawingPre.prototype.directionalLight = createDrawingPreFunction("directionalLight");
@@ -17307,7 +17248,7 @@
       "concat", "console", "constrain", "copy", "cos", "createFont",
       "createGraphics", "createImage", "cursor", "curve", "curveDetail",
       "curvePoint", "curveTangent", "curveTightness", "curveVertex", "day",
-      "defaultColor", "degrees", "directionalLight", "disableContextMenu",
+      "degrees", "directionalLight", "disableContextMenu",
       "dist", "draw", "ellipse", "ellipseMode", "emissive", "enableContextMenu",
       "endCamera", "endDraw", "endShape", "exit", "exp", "expand", "externals",
       "fill", "filter", "filter_bilinear", "filter_new_scanline",
@@ -19235,7 +19176,7 @@
   }());
   // end of tinylog lite JavaScript library
 
-  Processing.logger = window.console || tinylogLite;
+  Processing.logger = tinylogLite;
 
   Processing.version = "@VERSION@";
 
@@ -19313,7 +19254,7 @@
         element.style.fontFamily = "serif";
         element.style.fontSize = "72px";
         element.style.visibility = "hidden";
-        element.innerHTML = "abcmmmmmmmmmmlll";
+        element.innerHTML = "This element is a text block for font loading";
         document.getElementsByTagName("body")[0].appendChild(element);
         return element;
       }()),
@@ -19376,7 +19317,7 @@
         preLoader.style.fontFamily = "'" + fontName + "', serif";
         preLoader.style.fontSize = "72px";
         preLoader.style.visibility = "hidden";
-        preLoader.innerHTML = "abcmmmmmmmmmmlll";
+        preLoader.innerHTML = "This element is a text block for font loading";
         document.getElementsByTagName("body")[0].appendChild(preLoader);
         this.fontList.push(preLoader);
       }
@@ -19387,7 +19328,7 @@
       if(typeof this.attachFunction === "function") {
         this.attachFunction(processing);
       } else if(this.sourceCode) {
-        var func = eval_(this.sourceCode);
+        var func = ((new Function("return (" + this.sourceCode + ");"))());
         func(processing);
         this.attachFunction = func;
       } else {
@@ -19436,8 +19377,16 @@
           if (xhr.status !== 200 && xhr.status !== 0) {
             error = "Invalid XHR status " + xhr.status;
           } else if (xhr.responseText === "") {
-            error = "No content";
+            // Give a hint when loading fails due to same-origin issues on file:/// urls
+            if ( ("withCredentials" in new XMLHttpRequest()) &&
+                 (new XMLHttpRequest()).withCredentials === false &&
+                 window.location.protocol === "file:" ) {
+              error = "XMLHttpRequest failure, possibly due to a same-origin policy violation. You can try loading this page in another browser, or load it from http://localhost using a local webserver. See the Processing.js README for a more detailed explanation of this problem and solutions.";
+            } else {
+              error = "File is empty.";
+            }
           }
+
           callback(xhr.responseText, error);
         }
       };
@@ -19453,8 +19402,8 @@
       function callback(block, error) {
         code[index] = block;
         ++loaded;
-        if (error) {
-          errors.push("  " + filename + " ==> " + error);
+        if (error) { 
+          errors.push(filename + " ==> " + error);
         }
         if (loaded === sourcesCount) {
           if (errors.length === 0) {
@@ -19464,7 +19413,7 @@
               Processing.logger.log("Unable to execute pjs sketch: " + e);
             }
           } else {
-            Processing.logger.log("Unable to load pjs sketch files:\n" + errors.join("\n"));
+            Processing.logger.log("Unable to load pjs sketch files: " + errors.join("\n"));
           }
         }
       }
@@ -19478,6 +19427,7 @@
         }
         return;
       }
+
       ajaxAsync(filename, callback);
     }
 
@@ -19492,7 +19442,8 @@
   var init = function() {
     document.removeEventListener('DOMContentLoaded', init, false);
 
-    var canvas = document.getElementsByTagName('canvas');
+    var canvas = document.getElementsByTagName('canvas'),
+      filenames;
 
     for (var i = 0, l = canvas.length; i < l; i++) {
       // datasrc and data-src are deprecated.
@@ -19505,7 +19456,7 @@
         }
       }
       if (processingSources) {
-        var filenames = processingSources.split(' ');
+        filenames = processingSources.split(' ');
         for (var j = 0; j < filenames.length;) {
           if (filenames[j]) {
             j++;
@@ -19514,6 +19465,43 @@
           }
         }
         loadSketchFromSources(canvas[i], filenames);
+      }
+    }
+
+    // also process all <script>-indicated sketches, if there are any
+    var scripts = document.getElementsByTagName('script');
+    var s, source, instance;
+    for (s = 0; s < scripts.length; s++) {
+      var script = scripts[s];
+      if (!script.getAttribute) {
+        continue;
+      }
+
+      var type = script.getAttribute("type");
+      if (type && (type.toLowerCase() === "text/processing" || type.toLowerCase() === "application/processing")) {
+        var target = script.getAttribute("data-processing-target");
+        canvas = undef;
+        if (target) {
+          canvas = document.getElementById(target);
+        } else {
+          var nextSibling = script.nextSibling;
+          while (nextSibling && nextSibling.nodeType !== 1) {
+            nextSibling = nextSibling.nextSibling;
+          }
+          if (nextSibling.nodeName.toLowerCase() === "canvas") {
+            canvas = nextSibling;
+          }
+        }
+
+        if (canvas) {
+          if (script.getAttribute("src")) {
+            filenames = script.getAttribute("src").split(/\s+/);
+            loadSketchFromSources(canvas, filenames);
+            continue;
+          }
+          source =  script.innerText || script.textContent;
+          instance = new Processing(canvas, source);
+        }
       }
     }
   };
@@ -19542,4 +19530,4 @@
     // DOM is not found
     this.Processing = Processing;
   }
-}(window, window.document, Math, function(){}, function(expr) { return ((new Function("return (" + expr + ");"))()); }));
+}(window, window.document, Math));
